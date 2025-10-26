@@ -1,5 +1,7 @@
 # vault-loadgen
 
+[![CI](https://github.com/nhsy/vault-loadgen/actions/workflows/ci.yml/badge.svg)](https://github.com/nhsy/vault-loadgen/actions/workflows/ci.yml)
+
 A high-performance load generation tool for HashiCorp Vault.
 
 `vault-loadgen` is a command-line tool designed to generate synthetic load on HashiCorp Vault clusters. It helps you test Vault's performance, stability, and scalability under various workloads. It supports multiple secret engines, concurrent operations, and both Vault Enterprise (multi-namespace) and Vault OSS (single-namespace) environments.
@@ -411,23 +413,6 @@ The project follows the Golang Standards Project Layout:
     -   `internal/shutdown/` - Graceful shutdown handling
     -   `internal/stats/` - Statistics tracking and reporting
 
-## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1.  Fork the repository
-2.  Create a feature branch (`git checkout -b feature/your-feature`)
-3.  Follow the Go Style Guide (https://google.github.io/styleguide/go/guide)
-4.  Write tests for new functionality using table-based testing
-5.  Ensure all tests pass (`task test`)
-6.  Format your code (`task fmt`)
-7.  Commit your changes using conventional commit format
-8.  Push to your branch and submit a pull request
-
 ## License
 
-[Add license information here]
-
-## Support
-
-For issues and questions, please open an issue on the GitHub repository.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
