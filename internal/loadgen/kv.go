@@ -42,7 +42,7 @@ func GenerateKVLoad(ctx context.Context, cfg *config.Config) (*stats.Stats, erro
 	st := stats.New()
 
 	// Determine namespaces to use
-	namespaces := []string{}
+	var namespaces []string
 	if cfg.CreateNamespaces && cfg.Namespaces > 0 {
 		// Multi-namespace mode: create child namespaces
 		slog.Info("kv mode: creating child namespaces", "count", cfg.Namespaces)

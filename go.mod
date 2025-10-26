@@ -1,6 +1,6 @@
 module github.com/nhsy/vault-loadgen
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/hashicorp/vault/api v1.22.0

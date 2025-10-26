@@ -68,7 +68,7 @@ func TestHandler_Signal_SIGINT(t *testing.T) {
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		p, _ := os.FindProcess(os.Getpid())
-		p.Signal(syscall.SIGINT)
+		_ = p.Signal(syscall.SIGINT)
 	}()
 
 	// Wait for context to be cancelled
@@ -100,7 +100,7 @@ func TestHandler_Signal_SIGTERM(t *testing.T) {
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		p, _ := os.FindProcess(os.Getpid())
-		p.Signal(syscall.SIGTERM)
+		_ = p.Signal(syscall.SIGTERM)
 	}()
 
 	// Wait for context to be cancelled

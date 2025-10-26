@@ -115,9 +115,9 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&cfg.Progress, "progress", true, "Show progress indicators")
 
 	// Bind flags to Viper
-	viper.BindPFlag("addr", rootCmd.PersistentFlags().Lookup("vault-addr"))
-	viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("vault-token"))
-	viper.BindPFlag("cacert", rootCmd.PersistentFlags().Lookup("vault-cacert"))
+	_ = viper.BindPFlag("addr", rootCmd.PersistentFlags().Lookup("vault-addr"))
+	_ = viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("vault-token"))
+	_ = viper.BindPFlag("cacert", rootCmd.PersistentFlags().Lookup("vault-cacert"))
 
 	// Set defaults from environment variables
 	if addr := viper.GetString("addr"); addr != "" && cfg.VaultAddr == "" {

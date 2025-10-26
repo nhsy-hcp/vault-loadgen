@@ -42,7 +42,7 @@ func GeneratePKILoad(ctx context.Context, cfg *config.Config) (*stats.Stats, err
 	st := stats.New()
 
 	// Determine namespaces to use
-	namespaces := []string{}
+	var namespaces []string
 	if cfg.CreateNamespaces && cfg.Namespaces > 0 {
 		// Multi-namespace mode: create child namespaces
 		slog.Info("pki mode: creating child namespaces", "count", cfg.Namespaces)
