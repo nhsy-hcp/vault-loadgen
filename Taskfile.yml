@@ -1,0 +1,249 @@
+version: '3'
+
+vars:
+  BINARY_NAME: vault-loadgen
+  BUILD_DIR: ./bin
+  MAIN_PACKAGE: ./cmd/vault-loadgen
+  COVERAGE_FILE: coverage.out
+
+env:
+  CGO_ENABLED: 0
+  GOFLAGS: -buildvcs=false
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  # Build tasks
+  build:
+    desc: Build the binary
+    sources:
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}}"
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} {{.MAIN_PACKAGE}}
+    silent: false
+
+  build:all:
+    desc: Build binaries for all platforms
+    cmds:
+      - task: build:linux
+      - task: build:darwin
+      - task: build:windows
+
+  build:linux:
+    desc: Build Linux binary
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=linux GOARCH=amd64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-linux-amd64 {{.MAIN_PACKAGE}}
+
+  build:darwin:
+    desc: Build macOS binary
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=darwin GOARCH=amd64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-darwin-amd64 {{.MAIN_PACKAGE}}
+      - GOOS=darwin GOARCH=arm64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-darwin-arm64 {{.MAIN_PACKAGE}}
+
+  build:windows:
+    desc: Build Windows binary
+    cmds:
+      - mkdir -p {{.BUILD_DIR}}
+      - GOOS=windows GOARCH=amd64 go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}}-windows-amd64.exe {{.MAIN_PACKAGE}}
+
+  install:
+    desc: Install dependencies
+    cmds:
+      - go mod download
+      - go mod verify
+
+  # Testing tasks
+  test:
+    desc: Run all tests with race detector
+    cmds:
+      - go test -v -race -timeout 5m ./...
+
+  test:unit:
+    desc: Run unit tests only (exclude integration tests)
+    cmds:
+      - go test -v -race -short ./...
+
+  test:cover:
+    desc: Run tests with coverage report
+    cmds:
+      - go test -v -race -coverprofile={{.COVERAGE_FILE}} -covermode=atomic ./...
+      - go tool cover -html={{.COVERAGE_FILE}} -o coverage.html
+      - go tool cover -func={{.COVERAGE_FILE}}
+
+  test:benchmark:
+    desc: Run benchmark tests
+    cmds:
+      - go test -bench=. -benchmem -run=^$ ./...
+
+  # Code quality tasks
+  fmt:
+    desc: Format code with gofmt and goimports
+    cmds:
+      - gofmt -s -w .
+      - |
+        if command -v goimports >/dev/null 2>&1; then
+          goimports -w .
+        else
+          echo "goimports not installed, skipping"
+        fi
+
+  lint:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  # Vault testing environment tasks
+  vault:up:
+    desc: Start local Vault dev server for testing
+    cmds:
+      - |
+        # Check if Vault is already running
+        if pgrep -f "vault server -dev" > /dev/null; then
+          echo "Vault dev server is already running"
+          exit 0
+        fi
+        # Start Vault dev server in background
+        vault server -dev -dev-root-token-id=root > /tmp/vault-dev.log 2>&1 &
+        echo $! > /tmp/vault-dev.pid
+        sleep 2  # Wait for Vault to be ready
+        export VAULT_ADDR=http://localhost:8200
+        export VAULT_TOKEN=root
+        vault status || echo "Vault is starting..."
+    silent: false
+
+  vault:down:
+    desc: Stop local Vault dev server
+    cmds:
+      - |
+        if [ -f /tmp/vault-dev.pid ]; then
+          kill $(cat /tmp/vault-dev.pid) 2>/dev/null || true
+          rm -f /tmp/vault-dev.pid
+        fi
+        pkill -f "vault server -dev" || true
+        echo "Vault dev server stopped"
+
+  vault:logs:
+    desc: Show Vault dev server logs
+    cmds:
+      - tail -f /tmp/vault-dev.log
+
+  vault:reset:
+    desc: Reset Vault dev server (stop, remove, start fresh)
+    cmds:
+      - task: vault:down
+      - rm -f /tmp/vault-dev.log
+      - task: vault:up
+
+  # Development tasks
+  dev:
+    desc: Run in development mode with auto-reload
+    deps: [build]
+    cmds:
+      - "{{.BUILD_DIR}}/{{.BINARY_NAME}} --log-level debug {{.CLI_ARGS}}"
+
+  run:all:
+    desc: Run all load generation modes (PKI, AppRole, KV)
+    cmds:
+      - task: run:pki
+      - task: run:approle
+      - task: run:kv
+
+  run:pki:
+    desc: Run PKI mode example
+    deps: [build]
+    cmds:
+      - |
+        export VAULT_ADDR=http://localhost:8200
+        export VAULT_TOKEN=root
+        {{.BUILD_DIR}}/{{.BINARY_NAME}} pki \
+          --workers 4 \
+          --namespaces 0 \
+          --pki-leases 50 \
+          --pki-ttl 24h \
+          --log-level info
+
+  run:approle:
+    desc: Run AppRole mode example
+    deps: [build]
+    cmds:
+      - |
+        export VAULT_ADDR=http://localhost:8200
+        export VAULT_TOKEN=root
+        {{.BUILD_DIR}}/{{.BINARY_NAME}} approle \
+          --workers 4 \
+          --namespaces 0 \
+          --approle-logins 50 \
+          --log-level info
+
+  run:kv:
+    desc: Run KV mode example
+    deps: [build]
+    cmds:
+      - |
+        export VAULT_ADDR=http://localhost:8200
+        export VAULT_TOKEN=root
+        {{.BUILD_DIR}}/{{.BINARY_NAME}} kv \
+          --workers 4 \
+          --namespaces 0 \
+          --kv-engines 5 \
+          --secrets-per-engine 20 \
+          --log-level info
+
+  # Cleanup tasks
+  clean:
+    desc: Clean build artifacts and coverage files
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f {{.COVERAGE_FILE}} coverage.html
+      - go clean -cache -testcache
+
+  clean:all:
+    desc: Clean everything including dependencies
+    cmds:
+      - task: clean
+      - go clean -modcache
+
+  # Pre-commit tasks
+  pre-commit:
+    desc: Run all pre-commit checks
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test
+
+  # CI tasks
+  ci:
+    desc: Run CI pipeline (format, lint, test, build)
+    cmds:
+      - task: fmt
+      - task: lint
+      - task: test:cover
+      - task: build:all
+
+  # Help and info tasks
+  version:
+    desc: Show version information
+    cmds:
+      - go version
+      - task --version
+
+  deps:
+    desc: Show dependency tree
+    cmds:
+      - go mod graph
+
+  tidy:
+    desc: Tidy go modules
+    cmds:
+      - go mod tidy
+      - go mod verify

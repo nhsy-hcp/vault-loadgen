@@ -69,5 +69,3 @@ temp/
 debug
 __debug_bin
 
-# Air - live reload
-tmp/
