@@ -8,8 +8,8 @@ import (
 
 func TestNewClient_ValidConfig(t *testing.T) {
 	cfg := &config.Config{
-		VaultAddr:  "https://vault.example.com:8200",
-		VaultToken: "test-token",
+		VaultAddr:  "http://127.0.0.1:8200",
+		VaultToken: "root",
 	}
 
 	client, err := NewClient(cfg)
@@ -24,8 +24,8 @@ func TestNewClient_ValidConfig(t *testing.T) {
 
 func TestNewClient_WithNamespace(t *testing.T) {
 	cfg := &config.Config{
-		VaultAddr:       "https://vault.example.com:8200",
-		VaultToken:      "test-token",
+		VaultAddr:       "http://127.0.0.1:8200",
+		VaultToken:      "root",
 		ParentNamespace: "admin/test",
 	}
 
@@ -41,8 +41,8 @@ func TestNewClient_WithNamespace(t *testing.T) {
 
 func TestNewClient_WithSkipVerify(t *testing.T) {
 	cfg := &config.Config{
-		VaultAddr:       "https://vault.example.com:8200",
-		VaultToken:      "test-token",
+		VaultAddr:       "http://127.0.0.1:8200",
+		VaultToken:      "root",
 		VaultSkipVerify: true,
 	}
 
@@ -160,8 +160,8 @@ func TestValidateConnection(t *testing.T) {
 		// This test validates the function signature and error handling
 		// Actual connection tests require a running Vault instance
 		cfg := &config.Config{
-			VaultAddr:  "http://localhost:8200",
-			VaultToken: "test-token",
+			VaultAddr:  "http://127.0.0.1:8200",
+			VaultToken: "root",
 		}
 
 		client, err := NewClient(cfg)

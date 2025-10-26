@@ -193,8 +193,8 @@ func TestGeneratePKILoad_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config.Config{
-				VaultAddr:  "https://vault.example.com:8200",
-				VaultToken: "test-token",
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
 				PKILeases:  tt.leases,
 				PKITTL:     "24h",
 				PKIKeySize: 2048,

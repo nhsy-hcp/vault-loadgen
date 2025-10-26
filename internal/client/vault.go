@@ -10,8 +10,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hashicorp/vault/api"
 	"vault-loadgen/internal/config"
+
+	"github.com/hashicorp/vault/api"
 )
 
 // NewClient creates a new Vault client from configuration

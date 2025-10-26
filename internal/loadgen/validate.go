@@ -28,7 +28,7 @@ func ValidateLoad(ctx context.Context, cfg *config.Config, st *stats.Stats) (*Va
 	case "pki":
 		result.Expected = cfg.PKILeases
 		result.Actual = int(st.LeasesCreated)
-		result.Success = (result.Actual == result.Expected)
+		result.Success = result.Actual == result.Expected
 
 		if result.Success {
 			result.Message = fmt.Sprintf("PKI validation passed: %d/%d leases created", result.Actual, result.Expected)
@@ -40,7 +40,7 @@ func ValidateLoad(ctx context.Context, cfg *config.Config, st *stats.Stats) (*Va
 	case "approle":
 		result.Expected = cfg.AppRoleLogins
 		result.Actual = int(st.LeasesCreated)
-		result.Success = (result.Actual == result.Expected)
+		result.Success = result.Actual == result.Expected
 
 		if result.Success {
 			result.Message = fmt.Sprintf("AppRole validation passed: %d/%d token leases created", result.Actual, result.Expected)
@@ -53,7 +53,7 @@ func ValidateLoad(ctx context.Context, cfg *config.Config, st *stats.Stats) (*Va
 		totalExpected := len(getNamespaces(cfg)) * cfg.KVEngines * cfg.SecretsPerEngine
 		result.Expected = totalExpected
 		result.Actual = int(st.SecretsCreated)
-		result.Success = (result.Actual == result.Expected)
+		result.Success = result.Actual == result.Expected
 
 		if result.Success {
 			result.Message = fmt.Sprintf("KV validation passed: %d/%d secrets created", result.Actual, result.Expected)

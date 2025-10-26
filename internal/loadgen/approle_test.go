@@ -34,8 +34,8 @@ func TestGenerateAppRoleLoad_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config.Config{
-				VaultAddr:     "https://vault.example.com:8200",
-				VaultToken:    "test-token",
+				VaultAddr:     "http://127.0.0.1:8200",
+				VaultToken:    "root",
 				AppRoleLogins: tt.logins,
 				SecretIDTTL:   "1h",
 				TokenTTL:      "1h",
@@ -70,7 +70,7 @@ func TestGenerateAppRoleLoad_ConfigValidation(t *testing.T) {
 		{
 			name: "missing vault address",
 			config: &config.Config{
-				VaultToken:    "test-token",
+				VaultToken:    "root",
 				AppRoleLogins: 10,
 			},
 			wantErr:   true,
@@ -79,7 +79,7 @@ func TestGenerateAppRoleLoad_ConfigValidation(t *testing.T) {
 		{
 			name: "empty vault token",
 			config: &config.Config{
-				VaultAddr:     "https://vault.example.com:8200",
+				VaultAddr:     "http://127.0.0.1:8200",
 				AppRoleLogins: 10,
 			},
 			wantErr:   true,
@@ -228,8 +228,8 @@ func TestAppRoleLoad_Integration(t *testing.T) {
 		// This test validates the function signature and integration
 		// Actual AppRole tests require a running Vault instance
 		cfg := &config.Config{
-			VaultAddr:     "http://localhost:8200",
-			VaultToken:    "test-token",
+			VaultAddr:     "http://127.0.0.1:8200",
+			VaultToken:    "root",
 			AppRoleLogins: 5,
 			SecretIDTTL:   "1h",
 			TokenTTL:      "1h",

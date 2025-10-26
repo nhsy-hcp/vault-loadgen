@@ -217,8 +217,8 @@ func TestCreateNamespaces_Validation(t *testing.T) {
 		{
 			name: "zero namespaces",
 			cfg: &config.Config{
-				VaultAddr:  "https://vault.example.com:8200",
-				VaultToken: "test-token",
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
 				Namespaces: 0,
 				Workers:    4,
 			},
@@ -228,8 +228,8 @@ func TestCreateNamespaces_Validation(t *testing.T) {
 		{
 			name: "negative namespaces",
 			cfg: &config.Config{
-				VaultAddr:  "https://vault.example.com:8200",
-				VaultToken: "test-token",
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
 				Namespaces: -1,
 				Workers:    4,
 			},

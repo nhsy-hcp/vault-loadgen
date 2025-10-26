@@ -8,10 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault/api"
 	"vault-loadgen/internal/client"
 	"vault-loadgen/internal/config"
 	"vault-loadgen/internal/stats"
+
+	"github.com/hashicorp/vault/api"
 )
 
 var (

@@ -10,7 +10,6 @@ import (
 const (
 	MaxWorkers    = 32
 	MaxNamespaces = 1000
-	MaxLeases     = 1000000
 )
 
 // Config holds all configuration for the vault load test tool

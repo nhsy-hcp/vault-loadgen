@@ -15,8 +15,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid pki config",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "pki",
 				Workers:          4,
 				Namespaces:       5,
@@ -29,7 +29,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "missing vault address",
 			config: Config{
-				VaultToken: "test-token",
+				VaultToken: "root",
 				Mode:       "pki",
 			},
 			wantErr: true,
@@ -38,7 +38,7 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "missing vault token",
 			config: Config{
-				VaultAddr: "https://vault.example.com:8200",
+				VaultAddr: "http://127.0.0.1:8200",
 				Mode:      "pki",
 			},
 			wantErr: true,
@@ -47,8 +47,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "workers too high",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "pki",
 				Workers:          150,
 				Namespaces:       5,
@@ -60,8 +60,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "workers too low",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "pki",
 				Workers:          0,
 				Namespaces:       5,
@@ -73,8 +73,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "namespaces too high",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "pki",
 				Workers:          4,
 				Namespaces:       1500,
@@ -86,8 +86,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "pki invalid key size",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "pki",
 				Workers:          4,
 				Namespaces:       5,
@@ -101,8 +101,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "pki missing leases",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "pki",
 				Workers:          4,
 				Namespaces:       5,
@@ -115,8 +115,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid approle config",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "approle",
 				Workers:          4,
 				Namespaces:       5,
@@ -128,8 +128,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "approle missing logins",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "approle",
 				Workers:          4,
 				Namespaces:       5,
@@ -142,8 +142,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid kv config",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "kv",
 				Workers:          4,
 				Namespaces:       5,
@@ -155,8 +155,8 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "kv missing secrets per engine",
 			config: Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				Mode:             "kv",
 				Workers:          4,
 				Namespaces:       5,

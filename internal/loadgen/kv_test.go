@@ -51,8 +51,8 @@ func TestGenerateKVLoad_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config.Config{
-				VaultAddr:        "https://vault.example.com:8200",
-				VaultToken:       "test-token",
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
 				SecretsPerEngine: tt.secretsPerEngine,
 				KVEngines:        tt.kvEngines,
 			}
@@ -85,7 +85,7 @@ func TestGenerateKVLoad_ConfigValidation(t *testing.T) {
 		{
 			name: "missing vault address",
 			config: &config.Config{
-				VaultToken:       "test-token",
+				VaultToken:       "root",
 				SecretsPerEngine: 10,
 				KVEngines:        1,
 			},
@@ -95,7 +95,7 @@ func TestGenerateKVLoad_ConfigValidation(t *testing.T) {
 		{
 			name: "empty vault token",
 			config: &config.Config{
-				VaultAddr:        "https://vault.example.com:8200",
+				VaultAddr:        "http://127.0.0.1:8200",
 				SecretsPerEngine: 10,
 				KVEngines:        1,
 			},
@@ -287,8 +287,8 @@ func TestKVLoad_Integration(t *testing.T) {
 		// This test validates the function signature and integration
 		// Actual KV tests require a running Vault instance
 		cfg := &config.Config{
-			VaultAddr:        "http://localhost:8200",
-			VaultToken:       "test-token",
+			VaultAddr:        "http://127.0.0.1:8200",
+			VaultToken:       "root",
 			SecretsPerEngine: 5,
 			KVEngines:        1,
 			SecretSize:       3,
