@@ -21,7 +21,7 @@ jobs:
       - name: setup go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.23'
           cache: true
 
       - name: run tests
@@ -56,13 +56,16 @@ jobs:
 
             echo "Building for ${GOOS}/${GOARCH}..."
             GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build \
-              -ldflags="-s -w -X main.version=${VERSION}" \
+              -ldflags="-s -w -X github.com/nhsy/vault-loadgen/internal/version.Version=${VERSION}" \
               -o "./release/${output_name}" \
               ./cmd/vault-loadgen
 
-            # create checksums
+            # create compressed archives
             if [ "$GOOS" = "windows" ]; then
-              sha256sum "./release/${output_name}" > "./release/${output_name}.sha256"
+              # create zip for windows platforms
+              zip -j "./release/${output_name}.zip" "./release/${output_name}"
+              sha256sum "./release/${output_name}.zip" > "./release/${output_name}.zip.sha256"
+              rm "./release/${output_name}"
             else
               # create tar.gz for non-windows platforms
               tar -czf "./release/${output_name}.tar.gz" -C ./release "${output_name}"
@@ -71,17 +74,24 @@ jobs:
             fi
           done
 
-          # create checksums file
+          # create checksums file (exclude individual .sha256 files)
           cd ./release
-          sha256sum * > checksums.txt
+          sha256sum *.tar.gz *.zip 2>/dev/null > checksums.txt || true
           cd ..
+
+      - name: upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binaries
+          path: ./release/
+          retention-days: 5
 
       - name: create release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ./release/*.tar.gz
-            ./release/*.exe
+            ./release/*.zip
             ./release/*.sha256
             ./release/checksums.txt
           draft: false
