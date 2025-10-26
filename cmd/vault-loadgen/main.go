@@ -11,6 +11,7 @@ import (
 	"vault-loadgen/internal/config"
 	"vault-loadgen/internal/loadgen"
 	"vault-loadgen/internal/shutdown"
+	"vault-loadgen/internal/version"
 )
 
 const (
@@ -34,8 +35,9 @@ func run() int {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "vault-loadgen",
-	Short: "A load testing tool for HashiCorp Vault",
+	Use:     "vault-loadgen",
+	Short:   "A load testing tool for HashiCorp Vault",
+	Version: version.GetVersion(),
 	Long: `vault-loadgen is a CLI tool for generating synthetic load on HashiCorp Vault clusters.
 
 It supports three operational modes:
@@ -92,6 +94,9 @@ func init() {
 	// Initialize Viper
 	viper.SetEnvPrefix("VAULT")
 	viper.AutomaticEnv()
+
+	// Set custom version template to show full version info
+	rootCmd.SetVersionTemplate(version.GetFullVersion() + "\n")
 
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&cfg.VaultAddr, "vault-addr", "", "Vault server address")
