@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"vault-loadgen/internal/config"
+	"github.com/nhsy/vault-loadgen/internal/config"
 
 	"github.com/hashicorp/vault/api"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"vault-loadgen/internal/config"
-	"vault-loadgen/internal/stats"
+	"github.com/nhsy/vault-loadgen/internal/config"
+	"github.com/nhsy/vault-loadgen/internal/stats"
 )
 
 func TestValidateLoad_PKI(t *testing.T) {

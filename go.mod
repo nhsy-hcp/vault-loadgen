@@ -1,4 +1,4 @@
-module vault-loadgen
+module github.com/nhsy/vault-loadgen
 
 go 1.25
 

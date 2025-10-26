@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"vault-loadgen/internal/config"
+	"github.com/nhsy/vault-loadgen/internal/config"
 )
 
 func TestCreateCSR(t *testing.T) {

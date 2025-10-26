@@ -3,7 +3,7 @@ package client
 import (
 	"testing"
 
-	"vault-loadgen/internal/config"
+	"github.com/nhsy/vault-loadgen/internal/config"
 )
 
 func TestNewClient_ValidConfig(t *testing.T) {

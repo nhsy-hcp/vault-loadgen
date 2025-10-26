@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"vault-loadgen/internal/config"
+	"github.com/nhsy/vault-loadgen/internal/config"
 )
 
 func TestGenerateKVLoad_Validation(t *testing.T) {

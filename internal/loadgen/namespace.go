@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"vault-loadgen/internal/client"
-	"vault-loadgen/internal/config"
-	"vault-loadgen/internal/stats"
+	"github.com/nhsy/vault-loadgen/internal/client"
+	"github.com/nhsy/vault-loadgen/internal/config"
+	"github.com/nhsy/vault-loadgen/internal/stats"
 
 	"github.com/hashicorp/vault/api"
 )

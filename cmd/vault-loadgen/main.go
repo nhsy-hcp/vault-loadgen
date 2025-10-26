@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"vault-loadgen/internal/config"
-	"vault-loadgen/internal/loadgen"
-	"vault-loadgen/internal/shutdown"
-	"vault-loadgen/internal/version"
+	"github.com/nhsy/vault-loadgen/internal/config"
+	"github.com/nhsy/vault-loadgen/internal/loadgen"
+	"github.com/nhsy/vault-loadgen/internal/shutdown"
+	"github.com/nhsy/vault-loadgen/internal/version"
 )
 
 const (

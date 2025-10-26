@@ -11,10 +11,10 @@ import (
 	"github.com/hashicorp/vault/api"
 	"golang.org/x/sync/errgroup"
 
-	"vault-loadgen/internal/client"
-	"vault-loadgen/internal/config"
-	"vault-loadgen/internal/ratelimit"
-	"vault-loadgen/internal/stats"
+	"github.com/nhsy/vault-loadgen/internal/client"
+	"github.com/nhsy/vault-loadgen/internal/config"
+	"github.com/nhsy/vault-loadgen/internal/ratelimit"
+	"github.com/nhsy/vault-loadgen/internal/stats"
 )
 
 // GenerateKVLoad generates KV v2 secrets for load testing
