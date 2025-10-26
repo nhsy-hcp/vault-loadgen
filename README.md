@@ -172,7 +172,56 @@ This command creates 10 KVv2 engines in the root namespace and writes 100 secret
 
 ## Configuration
 
-All configuration options can be set via CLI flags or environment variables (`VAULT_ADDR`, `VAULT_TOKEN`, etc.).
+All configuration options can be set via CLI flags, environment variables, or a YAML configuration file.
+
+### Configuration File
+
+You can use a YAML configuration file to simplify complex configurations. Create a file (e.g., `config.yml`) with your settings:
+
+```yaml
+# Vault connection settings
+vault-addr: "http://127.0.0.1:8200"
+vault-token: "your-vault-token"
+vault-cacert: ""
+vault-skip-verify: false
+parent-namespace: ""
+
+# Global settings
+workers: 8
+namespaces: 10
+create-namespaces: true
+log-level: "info"
+rate-limit: 0
+dry-run: false
+output: "text"
+progress: true
+
+# PKI mode settings
+pki-leases: 1000
+pki-ttl: "48h"
+pki-root-ca-ttl: "168h"
+pki-key-size: 2048
+pki-common-name: "loadtest-{index}.example.com"
+
+# AppRole mode settings
+approle-logins: 500
+secret-id-ttl: "1h"
+token-ttl: "1h"
+token-max-ttl: "2h"
+
+# KV mode settings
+kv-engines: 10
+secrets-per-engine: 100
+secret-size: 5
+```
+
+Then use the configuration file with any command:
+
+```sh
+./bin/vault-loadgen pki --config config.yml
+```
+
+Note: CLI flags and environment variables take precedence over configuration file settings.
 
 ### Global Flags
 
