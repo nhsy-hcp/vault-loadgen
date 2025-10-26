@@ -1,0 +1,91 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: run tests
+        run: go test -v -race ./...
+
+      - name: build release binaries
+        run: |
+          # create release directory
+          mkdir -p ./release
+
+          # define version from tag
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "Building version: $VERSION"
+
+          # build for multiple platforms
+          platforms=(
+            "linux/amd64"
+            "linux/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+            "windows/amd64"
+          )
+
+          for platform in "${platforms[@]}"; do
+            GOOS=${platform%/*}
+            GOARCH=${platform#*/}
+
+            output_name="vault-loadgen-${VERSION}-${GOOS}-${GOARCH}"
+            if [ "$GOOS" = "windows" ]; then
+              output_name="${output_name}.exe"
+            fi
+
+            echo "Building for ${GOOS}/${GOARCH}..."
+            GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build \
+              -ldflags="-s -w -X main.version=${VERSION}" \
+              -o "./release/${output_name}" \
+              ./cmd/vault-loadgen
+
+            # create checksums
+            if [ "$GOOS" = "windows" ]; then
+              sha256sum "./release/${output_name}" > "./release/${output_name}.sha256"
+            else
+              # create tar.gz for non-windows platforms
+              tar -czf "./release/${output_name}.tar.gz" -C ./release "${output_name}"
+              sha256sum "./release/${output_name}.tar.gz" > "./release/${output_name}.tar.gz.sha256"
+              rm "./release/${output_name}"
+            fi
+          done
+
+          # create checksums file
+          cd ./release
+          sha256sum * > checksums.txt
+          cd ..
+
+      - name: create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./release/*.tar.gz
+            ./release/*.exe
+            ./release/*.sha256
+            ./release/checksums.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
