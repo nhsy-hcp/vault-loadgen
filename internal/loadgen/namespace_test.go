@@ -325,3 +325,39 @@ func TestNamespaceStats_Integration(t *testing.T) {
 		t.Errorf("TotalOperations() = %d, want 5", total)
 	}
 }
+
+func TestCreateNamespaces_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	cfg := &config.Config{
+		VaultAddr:  "http://127.0.0.1:8200",
+		VaultToken: "root",
+		Namespaces: 5,
+		Workers:    2,
+	}
+
+	_, err := CreateNamespaces(ctx, cfg)
+	if err == nil {
+		t.Error("CreateNamespaces() with cancelled context should return error")
+	}
+	// The error could be context-related or connection-related since context
+	// cancellation is checked at different points
+	t.Logf("CreateNamespaces() with cancelled context error: %v", err)
+}
+
+func TestCreateNamespaces_InvalidVaultAddr(t *testing.T) {
+	ctx := context.Background()
+
+	cfg := &config.Config{
+		VaultAddr:  "",
+		VaultToken: "root",
+		Namespaces: 5,
+		Workers:    2,
+	}
+
+	_, err := CreateNamespaces(ctx, cfg)
+	if err == nil {
+		t.Error("CreateNamespaces() with empty vault address should return error")
+	}
+}

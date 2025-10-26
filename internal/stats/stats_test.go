@@ -261,3 +261,117 @@ func TestStats_Concurrent(t *testing.T) {
 		t.Errorf("Concurrent LeasesCreated = %d, want %d", s.LeasesCreated, expected)
 	}
 }
+
+func TestStats_Duration_NoEndTime(t *testing.T) {
+	s := New()
+
+	// Sleep briefly to ensure duration > 0
+	time.Sleep(10 * time.Millisecond)
+
+	// Don't call End() - Duration should use time.Since(StartTime)
+	duration := s.Duration()
+
+	if duration < 10*time.Millisecond {
+		t.Errorf("Duration without End() = %v, want >= 10ms", duration)
+	}
+
+	// Verify EndTime is still zero
+	if !s.EndTime.IsZero() {
+		t.Error("EndTime should be zero when End() not called")
+	}
+}
+
+func TestStats_SecretsPerSecond(t *testing.T) {
+	s := New()
+
+	s.SecretsCreated = 50
+
+	// Simulate 2 second duration
+	s.StartTime = time.Now().Add(-2 * time.Second)
+	s.EndTime = time.Now()
+
+	sps := s.SecretsPerSecond()
+
+	// Should be around 25 secrets/sec
+	if sps < 20 || sps > 30 {
+		t.Errorf("SecretsPerSecond() = %.2f, want ~25", sps)
+	}
+}
+
+func TestStats_SecretsPerSecond_ZeroDuration(t *testing.T) {
+	s := New()
+	s.SecretsCreated = 50
+
+	// Same start and end time
+	s.StartTime = time.Now()
+	s.EndTime = s.StartTime
+
+	sps := s.SecretsPerSecond()
+	if sps != 0 {
+		t.Errorf("SecretsPerSecond() with zero duration = %.2f, want 0", sps)
+	}
+}
+
+func TestStats_PrintSummary_AllStats(t *testing.T) {
+	s := New()
+
+	s.NamespacesCreated = 5
+	s.NamespacesSkipped = 1
+	s.NamespacesFailed = 1
+	s.LeasesCreated = 100
+	s.LeasesFailed = 5
+	s.SecretsCreated = 50
+	s.SecretsFailed = 2
+
+	s.StartTime = time.Now().Add(-10 * time.Second)
+	s.EndTime = time.Now()
+
+	// Just verify it doesn't panic and runs without error
+	// Output validation would require capturing stdout
+	s.PrintSummary("Test Mode")
+}
+
+func TestStats_PrintSummary_OnlyNamespaces(t *testing.T) {
+	s := New()
+
+	s.NamespacesCreated = 10
+	s.StartTime = time.Now().Add(-5 * time.Second)
+	s.EndTime = time.Now()
+
+	// Verify no panic with only namespace stats
+	s.PrintSummary("Namespace Only")
+}
+
+func TestStats_PrintSummary_OnlyLeases(t *testing.T) {
+	s := New()
+
+	s.LeasesCreated = 200
+	s.LeasesFailed = 10
+	s.StartTime = time.Now().Add(-20 * time.Second)
+	s.EndTime = time.Now()
+
+	// Verify no panic with only lease stats
+	s.PrintSummary("Leases Only")
+}
+
+func TestStats_PrintSummary_OnlySecrets(t *testing.T) {
+	s := New()
+
+	s.SecretsCreated = 75
+	s.SecretsFailed = 3
+	s.StartTime = time.Now().Add(-15 * time.Second)
+	s.EndTime = time.Now()
+
+	// Verify no panic with only secret stats
+	s.PrintSummary("Secrets Only")
+}
+
+func TestStats_PrintSummary_Empty(t *testing.T) {
+	s := New()
+
+	s.StartTime = time.Now()
+	s.EndTime = time.Now()
+
+	// Verify no panic with empty stats
+	s.PrintSummary("Empty")
+}

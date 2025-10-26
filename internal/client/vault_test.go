@@ -1,6 +1,8 @@
 package client
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/nhsy/vault-loadgen/internal/config"
@@ -145,6 +147,113 @@ func TestParseVaultAddr(t *testing.T) {
 				t.Errorf("validateVaultAddr() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestNewClient_InvalidAddress(t *testing.T) {
+	tests := []struct {
+		name    string
+		addr    string
+		wantErr string
+	}{
+		{
+			name:    "empty address",
+			addr:    "",
+			wantErr: "vault address cannot be empty",
+		},
+		{
+			name:    "no scheme",
+			addr:    "vault.example.com:8200",
+			wantErr: "must start with http:// or https://",
+		},
+		{
+			name:    "invalid scheme",
+			addr:    "ftp://vault.example.com:8200",
+			wantErr: "must start with http:// or https://",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config.Config{
+				VaultAddr:  tt.addr,
+				VaultToken: "root",
+			}
+
+			client, err := NewClient(cfg)
+			if err == nil {
+				t.Errorf("NewClient() expected error containing %q, got nil", tt.wantErr)
+			}
+			if client != nil {
+				t.Error("NewClient() expected nil client on error")
+			}
+			if err != nil && !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("NewClient() error = %v, want error containing %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestConfigureTLS_InvalidCACert(t *testing.T) {
+	tests := []struct {
+		name     string
+		certPath string
+		wantErr  string
+	}{
+		{
+			name:     "nonexistent file",
+			certPath: "/nonexistent/path/to/ca.crt",
+			wantErr:  "not found",
+		},
+		{
+			name:     "invalid PEM",
+			certPath: "/tmp/invalid-cert.pem",
+			wantErr:  "failed to parse CA certificate",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// For invalid PEM test, create a file with invalid content
+			if tt.name == "invalid PEM" {
+				err := os.WriteFile(tt.certPath, []byte("invalid pem content"), 0644)
+				if err != nil {
+					t.Fatalf("Failed to create test file: %v", err)
+				}
+				defer os.Remove(tt.certPath)
+			}
+
+			cfg := &config.Config{
+				VaultAddr:   "https://vault.example.com:8200",
+				VaultToken:  "root",
+				VaultCACert: tt.certPath,
+			}
+
+			_, err := NewClient(cfg)
+			if err == nil {
+				t.Errorf("NewClient() with invalid CA cert expected error containing %q, got nil", tt.wantErr)
+			}
+			if err != nil && !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("NewClient() error = %v, want error containing %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestNewClient_EmptyToken(t *testing.T) {
+	cfg := &config.Config{
+		VaultAddr:  "http://127.0.0.1:8200",
+		VaultToken: "",
+	}
+
+	// NewClient should succeed even with empty token
+	// Token validation happens in ValidateAuth
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Errorf("NewClient() unexpected error = %v", err)
+	}
+	if client == nil {
+		t.Error("NewClient() returned nil client")
 	}
 }
 
