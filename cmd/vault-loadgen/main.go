@@ -59,9 +59,10 @@ It supports three operational modes:
 }
 
 var pkiCmd = &cobra.Command{
-	Use:   "pki",
-	Short: "Generate PKI certificate leases",
-	Long:  "Generate certificate leases through PKI secret engines with configurable TTL and key sizes",
+	Use:          "pki",
+	Short:        "Generate PKI certificate leases",
+	Long:         "Generate certificate leases through PKI secret engines with configurable TTL and key sizes",
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg.Mode = "pki"
 		return runPKIMode()
@@ -69,9 +70,10 @@ var pkiCmd = &cobra.Command{
 }
 
 var approleCmd = &cobra.Command{
-	Use:   "approle",
-	Short: "Generate AppRole token leases",
-	Long:  "Create AppRole credentials and generate token leases with configurable TTL",
+	Use:          "approle",
+	Short:        "Generate AppRole token leases",
+	Long:         "Create AppRole credentials and generate token leases with configurable TTL",
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg.Mode = "approle"
 		return runAppRoleMode()
@@ -79,9 +81,10 @@ var approleCmd = &cobra.Command{
 }
 
 var kvCmd = &cobra.Command{
-	Use:   "kv",
-	Short: "Populate KV v2 secrets engines",
-	Long:  "Write random secrets to KV v2 secrets engines across namespaces",
+	Use:          "kv",
+	Short:        "Populate KV v2 secrets engines",
+	Long:         "Write random secrets to KV v2 secrets engines across namespaces",
+	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg.Mode = "kv"
 		return runKVMode()
