@@ -29,7 +29,7 @@ func TestCreateNamespace_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/namespaces/loadtest-123" {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id":   "ns-123",
 							"path": "loadtest-123/",
@@ -53,7 +53,7 @@ func TestCreateNamespace_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/namespaces/existing-ns" {
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"namespace already exists"},
 					})
 				}
@@ -74,7 +74,7 @@ func TestCreateNamespace_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/namespaces/test-ns" {
 					w.WriteHeader(http.StatusNotFound)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"unsupported path"},
 					})
 				}
@@ -93,7 +93,7 @@ func TestCreateNamespace_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/namespaces/restricted-ns" {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -112,7 +112,7 @@ func TestCreateNamespace_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/namespaces/error-ns" {
 					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"internal server error"},
 					})
 				}
@@ -232,6 +232,7 @@ func TestValidateNamespace_UnknownMode(t *testing.T) {
 
 	if err == nil {
 		t.Error("ValidateNamespace() with unknown mode should return error")
+		return
 	}
 
 	if !strings.Contains(err.Error(), "unknown mode") {

@@ -34,17 +34,17 @@ func TestSetupPKIEngine_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/mounts/pki" && r.Method == "POST":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/pki/root/generate/internal" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"certificate": "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----",
 						},
 					})
 				case r.URL.Path == "/v1/pki/roles/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -60,19 +60,19 @@ func TestSetupPKIEngine_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/mounts/pki" && r.Method == "POST":
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"path is already in use at pki/"},
 					})
 				case r.URL.Path == "/v1/pki/root/generate/internal" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"certificate": "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----",
 						},
 					})
 				case r.URL.Path == "/v1/pki/roles/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -87,7 +87,7 @@ func TestSetupPKIEngine_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/mounts/pki" && r.Method == "POST" {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -104,10 +104,10 @@ func TestSetupPKIEngine_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/mounts/pki" && r.Method == "POST":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/pki/root/generate/internal" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"failed to generate root CA"},
 					})
 				default:
@@ -126,17 +126,17 @@ func TestSetupPKIEngine_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/mounts/pki" && r.Method == "POST":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/pki/root/generate/internal" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"certificate": "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----",
 						},
 					})
 				case r.URL.Path == "/v1/pki/roles/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"invalid role configuration"},
 					})
 				default:
@@ -199,7 +199,7 @@ func TestGenerateCertificateLease_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/pki/sign/loadtest" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"lease_id":       "pki/sign/loadtest/abc123",
 						"lease_duration": 86400,
 						"data": map[string]interface{}{
@@ -219,7 +219,7 @@ func TestGenerateCertificateLease_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/pki/sign/loadtest" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"lease_id": "pki/sign/loadtest/xyz789",
 						"data": map[string]interface{}{
 							"certificate": "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----",
@@ -237,7 +237,7 @@ func TestGenerateCertificateLease_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/pki/sign/loadtest" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"invalid CSR"},
 					})
 				}
@@ -253,7 +253,7 @@ func TestGenerateCertificateLease_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/pki/sign/loadtest" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -334,33 +334,33 @@ func TestGeneratePKILoad_MockedEndToEnd(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/health":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"initialized": true,
 						"sealed":      false,
 					})
 				case r.URL.Path == "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id": "mock-token",
 						},
 					})
 				case r.URL.Path == "/v1/sys/mounts/pki":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/pki/root/generate/internal":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"certificate": "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----",
 						},
 					})
 				case r.URL.Path == "/v1/pki/roles/loadtest":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case strings.HasPrefix(r.URL.Path, "/v1/pki/sign/loadtest"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"lease_id": "pki/sign/loadtest/test-lease",
 						"data": map[string]interface{}{
 							"certificate": "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----",
@@ -398,34 +398,34 @@ func TestGeneratePKILoad_MockedEndToEnd(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/health":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"initialized": true,
 						"sealed":      false,
 					})
 				case r.URL.Path == "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id": "mock-token",
 						},
 					})
 				case r.URL.Path == "/v1/sys/mounts/pki":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/pki/root/generate/internal":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"certificate": "-----BEGIN CERTIFICATE-----\nMIIC...\n-----END CERTIFICATE-----",
 						},
 					})
 				case r.URL.Path == "/v1/pki/roles/loadtest":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case strings.HasPrefix(r.URL.Path, "/v1/pki/sign/loadtest"):
 					// Simulate some failures
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"signing failed"},
 					})
 				default:
@@ -458,7 +458,7 @@ func TestGeneratePKILoad_MockedEndToEnd(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/auth/token/lookup-self" {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -503,16 +503,16 @@ func TestGeneratePKILoad_MockedEndToEnd(t *testing.T) {
 func TestGeneratePKILoad_ContextCancellation(t *testing.T) {
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/v1/sys/health":
+		switch r.URL.Path {
+		case "/v1/sys/health":
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"initialized": true,
 				"sealed":      false,
 			})
-		case r.URL.Path == "/v1/auth/token/lookup-self":
+		case "/v1/auth/token/lookup-self":
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"data": map[string]interface{}{
 					"id": "mock-token",
 				},

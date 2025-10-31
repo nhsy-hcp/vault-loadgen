@@ -32,7 +32,7 @@ func TestSetupKVEngine_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/mounts/secret-0" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				}
 			},
 			wantErr: false,
@@ -44,7 +44,7 @@ func TestSetupKVEngine_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/mounts/secret-1" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"path is already in use at secret-1/"},
 					})
 				}
@@ -58,7 +58,7 @@ func TestSetupKVEngine_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/mounts/secret-2" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -73,7 +73,7 @@ func TestSetupKVEngine_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/mounts/secret-3" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"unknown type: kv-v2"},
 					})
 				}
@@ -139,7 +139,7 @@ func TestWriteSecret_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/secret-0/data/loadtest-1" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"version": 1,
 						},
@@ -159,7 +159,7 @@ func TestWriteSecret_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/secret-1/data/loadtest-2" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"version": 1,
 						},
@@ -179,7 +179,7 @@ func TestWriteSecret_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/secret-0/data/loadtest-3" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -198,7 +198,7 @@ func TestWriteSecret_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/nonexistent/data/loadtest-4" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusNotFound)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"no handler for route"},
 					})
 				}
@@ -221,7 +221,7 @@ func TestWriteSecret_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/secret-0/data/loadtest-large" && (r.Method == "POST" || r.Method == "PUT") {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"version": 1,
 						},
@@ -289,23 +289,23 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/health":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"initialized": true,
 						"sealed":      false,
 					})
 				case r.URL.Path == "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id": "mock-token",
 						},
 					})
 				case r.URL.Path == "/v1/sys/mounts/secret-0":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case strings.HasPrefix(r.URL.Path, "/v1/secret-0/data/loadtest-"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"version": 1,
 						},
@@ -339,23 +339,23 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/health":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"initialized": true,
 						"sealed":      false,
 					})
 				case r.URL.Path == "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id": "mock-token",
 						},
 					})
 				case strings.HasPrefix(r.URL.Path, "/v1/sys/mounts/secret-"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case strings.Contains(r.URL.Path, "/data/loadtest-"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"version": 1,
 						},
@@ -390,24 +390,24 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/health":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"initialized": true,
 						"sealed":      false,
 					})
 				case r.URL.Path == "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id": "mock-token",
 						},
 					})
 				case r.URL.Path == "/v1/sys/mounts/secret-0":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case strings.HasPrefix(r.URL.Path, "/v1/secret-0/data/loadtest-"):
 					// Simulate write failures
 					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"write failed"},
 					})
 				default:
@@ -438,7 +438,7 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/auth/token/lookup-self" {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -458,23 +458,23 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
-				switch {
-				case r.URL.Path == "/v1/sys/health":
+				switch r.URL.Path {
+				case "/v1/sys/health":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"initialized": true,
 						"sealed":      false,
 					})
-				case r.URL.Path == "/v1/auth/token/lookup-self":
+				case "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id": "mock-token",
 						},
 					})
-				case r.URL.Path == "/v1/sys/mounts/secret-0":
+				case "/v1/sys/mounts/secret-0":
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				default:
@@ -521,16 +521,16 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 func TestGenerateKVLoad_ContextCancellation(t *testing.T) {
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/v1/sys/health":
+		switch r.URL.Path {
+		case "/v1/sys/health":
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"initialized": true,
 				"sealed":      false,
 			})
-		case r.URL.Path == "/v1/auth/token/lookup-self":
+		case "/v1/auth/token/lookup-self":
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"data": map[string]interface{}{
 					"id": "mock-token",
 				},
@@ -648,7 +648,7 @@ func TestGenerateRandomString(t *testing.T) {
 
 			// Verify it's valid hex (only 0-9 and a-f characters)
 			for _, char := range str {
-				if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f')) {
+				if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
 					t.Errorf("Invalid hex character in string: %c", char)
 				}
 			}

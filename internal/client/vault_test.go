@@ -256,7 +256,9 @@ func TestConfigureTLS_InvalidCACert(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Failed to create test file: %v", err)
 				}
-				defer os.Remove(tt.certPath)
+				defer func() {
+					_ = os.Remove(tt.certPath)
+				}()
 			}
 
 			cfg := &config.Config{

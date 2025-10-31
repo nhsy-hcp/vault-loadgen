@@ -21,7 +21,7 @@ func TestValidateConnection_MockedResponses(t *testing.T) {
 			name: "vault sealed",
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"initialized": true,
 					"sealed":      true,
 				})
@@ -33,7 +33,7 @@ func TestValidateConnection_MockedResponses(t *testing.T) {
 			name: "vault not initialized",
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"initialized": false,
 					"sealed":      false,
 				})
@@ -45,7 +45,7 @@ func TestValidateConnection_MockedResponses(t *testing.T) {
 			name: "vault healthy",
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"initialized":  true,
 					"sealed":       false,
 					"version":      "1.15.0",
@@ -110,7 +110,7 @@ func TestValidateAuth_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/auth/token/lookup-self" {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id":           "mock-token-id",
 							"display_name": "test-token",
@@ -126,7 +126,7 @@ func TestValidateAuth_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/auth/token/lookup-self" {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -140,7 +140,7 @@ func TestValidateAuth_MockedResponses(t *testing.T) {
 				if r.URL.Path == "/v1/auth/token/lookup-self" {
 					// Return 403 for expired token
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"token expired"},
 					})
 				}
@@ -206,7 +206,7 @@ func TestValidateNamespace_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/namespaces/admin" {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id":   "admin-ns-id",
 							"path": "admin/",
@@ -222,7 +222,7 @@ func TestValidateNamespace_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/namespaces/nonexistent" {
 					w.WriteHeader(http.StatusNotFound)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"namespace not found"},
 					})
 				}

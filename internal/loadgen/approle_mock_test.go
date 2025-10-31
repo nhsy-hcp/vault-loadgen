@@ -36,10 +36,10 @@ func TestSetupAppRoleAuth_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/auth/approle" && r.Method == "POST":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -58,12 +58,12 @@ func TestSetupAppRoleAuth_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/auth/approle" && r.Method == "POST":
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"path is already in use at approle/"},
 					})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -81,7 +81,7 @@ func TestSetupAppRoleAuth_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/sys/auth/approle" && r.Method == "POST" {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -101,10 +101,10 @@ func TestSetupAppRoleAuth_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/auth/approle" && r.Method == "POST":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"invalid role configuration"},
 					})
 				default:
@@ -164,14 +164,14 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/role-id" && r.Method == "GET":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"role_id": "test-role-id-12345",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/secret-id" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"secret_id":          "test-secret-id-67890",
 							"secret_id_accessor": "test-accessor",
@@ -179,7 +179,7 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 					})
 				case r.URL.Path == "/v1/auth/approle/login" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"auth": map[string]interface{}{
 							"client_token":   "s.test-token-abc123",
 							"lease_duration": 3600,
@@ -199,21 +199,21 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/role-id":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"role_id": "test-role-id",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/secret-id" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"secret_id": "test-secret-id",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/login":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"auth": map[string]interface{}{
 							"client_token":   "s.test-token",
 							"lease_duration": 3600,
@@ -231,7 +231,7 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/auth/approle/role/loadtest/role-id" {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -245,7 +245,7 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/auth/approle/role/loadtest/role-id" {
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{},
 					})
 				}
@@ -257,17 +257,17 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 			name:      "secret ID generation failure",
 			namespace: "",
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
-				switch {
-				case r.URL.Path == "/v1/auth/approle/role/loadtest/role-id":
+				switch r.URL.Path {
+				case "/v1/auth/approle/role/loadtest/role-id":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"role_id": "test-role-id",
 						},
 					})
-				case r.URL.Path == "/v1/auth/approle/role/loadtest/secret-id":
+				case "/v1/auth/approle/role/loadtest/secret-id":
 					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"failed to generate secret ID"},
 					})
 				default:
@@ -281,17 +281,17 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 			name:      "nil secret ID response",
 			namespace: "",
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
-				switch {
-				case r.URL.Path == "/v1/auth/approle/role/loadtest/role-id":
+				switch r.URL.Path {
+				case "/v1/auth/approle/role/loadtest/role-id":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"role_id": "test-role-id",
 						},
 					})
-				case r.URL.Path == "/v1/auth/approle/role/loadtest/secret-id":
+				case "/v1/auth/approle/role/loadtest/secret-id":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{},
 					})
 				default:
@@ -308,21 +308,21 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/role-id":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"role_id": "test-role-id",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/secret-id" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"secret_id": "test-secret-id",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/login":
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"invalid credentials"},
 					})
 				default:
@@ -339,21 +339,21 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/role-id":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"role_id": "test-role-id",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/secret-id" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"secret_id": "test-secret-id",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/login":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -421,40 +421,40 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/health":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"initialized": true,
 						"sealed":      false,
 					})
 				case r.URL.Path == "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id": "mock-token",
 						},
 					})
 				case r.URL.Path == "/v1/sys/auth/approle":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/role-id":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"role_id": "test-role-id",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/secret-id" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"secret_id": "test-secret-id",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/login":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"auth": map[string]interface{}{
 							"client_token":   "s.test-token",
 							"lease_duration": 3600,
@@ -490,33 +490,33 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				switch {
 				case r.URL.Path == "/v1/sys/health":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"initialized": true,
 						"sealed":      false,
 					})
 				case r.URL.Path == "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id": "mock-token",
 						},
 					})
 				case r.URL.Path == "/v1/sys/auth/approle":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{})
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/role-id":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"role_id": "test-role-id",
 						},
 					})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest/secret-id" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"secret_id": "test-secret-id",
 						},
@@ -524,7 +524,7 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				case r.URL.Path == "/v1/auth/approle/login":
 					// Simulate login failures
 					w.WriteHeader(http.StatusBadRequest)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"login failed"},
 					})
 				default:
@@ -556,7 +556,7 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v1/auth/token/lookup-self" {
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				}
@@ -577,23 +577,23 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
-				switch {
-				case r.URL.Path == "/v1/sys/health":
+				switch r.URL.Path {
+				case "/v1/sys/health":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"initialized": true,
 						"sealed":      false,
 					})
-				case r.URL.Path == "/v1/auth/token/lookup-self":
+				case "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusOK)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"data": map[string]interface{}{
 							"id": "mock-token",
 						},
 					})
-				case r.URL.Path == "/v1/sys/auth/approle":
+				case "/v1/sys/auth/approle":
 					w.WriteHeader(http.StatusForbidden)
-					json.NewEncoder(w).Encode(map[string]interface{}{
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},
 					})
 				default:
@@ -640,16 +640,16 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 func TestGenerateAppRoleLoad_ContextCancellation(t *testing.T) {
 	// Create mock server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/v1/sys/health":
+		switch r.URL.Path {
+		case "/v1/sys/health":
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"initialized": true,
 				"sealed":      false,
 			})
-		case r.URL.Path == "/v1/auth/token/lookup-self":
+		case "/v1/auth/token/lookup-self":
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"data": map[string]interface{}{
 					"id": "mock-token",
 				},

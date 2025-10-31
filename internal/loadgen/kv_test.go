@@ -269,7 +269,7 @@ func TestKVLoad_RandomStringGeneration(t *testing.T) {
 
 			// Check that it's valid hex
 			for _, char := range str1 {
-				if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f')) {
+				if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
 					t.Errorf("invalid hex character in string: %c", char)
 				}
 			}
