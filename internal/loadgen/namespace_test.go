@@ -361,3 +361,106 @@ func TestCreateNamespaces_InvalidVaultAddr(t *testing.T) {
 		t.Error("CreateNamespaces() with empty vault address should return error")
 	}
 }
+
+func TestIsNamespaceNotSupportedError(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{
+			name: "nil error",
+			err:  nil,
+			want: false,
+		},
+		{
+			name: "unsupported path error",
+			err:  errors.New("unsupported path"),
+			want: true,
+		},
+		{
+			name: "unsupported operation error",
+			err:  errors.New("unsupported operation"),
+			want: true,
+		},
+		{
+			name: "unknown command error",
+			err:  errors.New("unknown command"),
+			want: true,
+		},
+		{
+			name: "enterprise-only error",
+			err:  errors.New("This feature is enterprise-only"),
+			want: true,
+		},
+		{
+			name: "vault enterprise feature error",
+			err:  errors.New("feature is part of vault enterprise"),
+			want: true,
+		},
+		{
+			name: "namespace feature requires vault enterprise",
+			err:  errors.New("namespace feature requires vault enterprise"),
+			want: true,
+		},
+		{
+			name: "case insensitive - UNSUPPORTED PATH",
+			err:  errors.New("UNSUPPORTED PATH"),
+			want: true,
+		},
+		{
+			name: "case insensitive - ENTERPRISE-ONLY",
+			err:  errors.New("FEATURE IS ENTERPRISE-ONLY"),
+			want: true,
+		},
+		{
+			name: "unrelated error",
+			err:  errors.New("connection timeout"),
+			want: false,
+		},
+		{
+			name: "permission error (not OSS)",
+			err:  errors.New("permission denied"),
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsNamespaceNotSupportedError(tt.err)
+			if got != tt.want {
+				t.Errorf("IsNamespaceNotSupportedError() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatOSSNamespaceError(t *testing.T) {
+	err := FormatOSSNamespaceError()
+
+	if err == nil {
+		t.Fatal("FormatOSSNamespaceError() returned nil")
+	}
+
+	errMsg := err.Error()
+
+	// Check that error message contains key information
+	expectedPhrases := []string{
+		"Vault OSS",
+		"Enterprise-only",
+		"--namespaces=0",
+		"--create-namespaces=false",
+		"single-namespace mode",
+	}
+
+	for _, phrase := range expectedPhrases {
+		if !strings.Contains(errMsg, phrase) {
+			t.Errorf("FormatOSSNamespaceError() message should contain %q, got: %s", phrase, errMsg)
+		}
+	}
+
+	// Verify it provides actionable guidance
+	if !strings.Contains(errMsg, "root namespace") {
+		t.Error("FormatOSSNamespaceError() should mention root namespace")
+	}
+}

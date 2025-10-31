@@ -265,3 +265,127 @@ func TestCommands_Usage(t *testing.T) {
 		}
 	}
 }
+
+func TestRunPKIMode_InvalidConfig(t *testing.T) {
+	// Save original config
+	originalCfg := cfg
+	defer func() { cfg = originalCfg }()
+
+	// Test with invalid configuration (missing vault address)
+	cfg = &config.Config{
+		Mode:       "pki",
+		VaultAddr:  "", // Invalid - empty address
+		VaultToken: "root",
+		PKILeases:  10,
+	}
+
+	err := runPKIMode()
+	if err == nil {
+		t.Error("runPKIMode() expected error with invalid config, got nil")
+	}
+}
+
+func TestRunAppRoleMode_InvalidConfig(t *testing.T) {
+	// Save original config
+	originalCfg := cfg
+	defer func() { cfg = originalCfg }()
+
+	// Test with invalid configuration (missing vault address)
+	cfg = &config.Config{
+		Mode:          "approle",
+		VaultAddr:     "", // Invalid - empty address
+		VaultToken:    "root",
+		AppRoleLogins: 10,
+	}
+
+	err := runAppRoleMode()
+	if err == nil {
+		t.Error("runAppRoleMode() expected error with invalid config, got nil")
+	}
+}
+
+func TestRunKVMode_InvalidConfig(t *testing.T) {
+	// Save original config
+	originalCfg := cfg
+	defer func() { cfg = originalCfg }()
+
+	// Test with invalid configuration (missing vault address)
+	cfg = &config.Config{
+		Mode:             "kv",
+		VaultAddr:        "", // Invalid - empty address
+		VaultToken:       "root",
+		KVEngines:        1,
+		SecretsPerEngine: 10,
+	}
+
+	err := runKVMode()
+	if err == nil {
+		t.Error("runKVMode() expected error with invalid config, got nil")
+	}
+}
+
+func TestPKICmd_RunE(t *testing.T) {
+	// Verify PKI command sets mode correctly
+	originalCfg := cfg
+	defer func() { cfg = originalCfg }()
+
+	cfg = &config.Config{
+		VaultAddr:  "http://127.0.0.1:8200",
+		VaultToken: "root",
+		PKILeases:  1,
+	}
+
+	// Test that RunE function sets the mode
+	// Note: This will fail because Vault is not running, but we can verify
+	// that the mode is set before the failure occurs
+	err := pkiCmd.RunE(pkiCmd, []string{})
+	if err == nil {
+		t.Error("expected error without running Vault")
+	}
+	if cfg.Mode != "pki" {
+		t.Errorf("pkiCmd.RunE() should set mode to 'pki', got %q", cfg.Mode)
+	}
+}
+
+func TestAppRoleCmd_RunE(t *testing.T) {
+	// Verify AppRole command sets mode correctly
+	originalCfg := cfg
+	defer func() { cfg = originalCfg }()
+
+	cfg = &config.Config{
+		VaultAddr:     "http://127.0.0.1:8200",
+		VaultToken:    "root",
+		AppRoleLogins: 1,
+	}
+
+	// Test that RunE function sets the mode
+	err := approleCmd.RunE(approleCmd, []string{})
+	if err == nil {
+		t.Error("expected error without running Vault")
+	}
+	if cfg.Mode != "approle" {
+		t.Errorf("approleCmd.RunE() should set mode to 'approle', got %q", cfg.Mode)
+	}
+}
+
+func TestKVCmd_RunE(t *testing.T) {
+	// Verify KV command sets mode correctly
+	originalCfg := cfg
+	defer func() { cfg = originalCfg }()
+
+	cfg = &config.Config{
+		VaultAddr:        "http://127.0.0.1:8200",
+		VaultToken:       "root",
+		KVEngines:        1,
+		SecretsPerEngine: 1,
+	}
+
+	// Test that RunE function sets the mode
+	err := kvCmd.RunE(kvCmd, []string{})
+	if err == nil {
+		t.Error("expected error without running Vault")
+	}
+	if cfg.Mode != "kv" {
+		t.Errorf("kvCmd.RunE() should set mode to 'kv', got %q", cfg.Mode)
+	}
+}

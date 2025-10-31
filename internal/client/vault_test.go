@@ -95,6 +95,42 @@ func TestBuildNamespacePath(t *testing.T) {
 			child:  "/test",
 			want:   "admin/test",
 		},
+		{
+			name:   "both empty strings",
+			parent: "",
+			child:  "",
+			want:   "",
+		},
+		{
+			name:   "parent only with slashes",
+			parent: "///",
+			child:  "test",
+			want:   "test",
+		},
+		{
+			name:   "child only with slashes",
+			parent: "admin",
+			child:  "///",
+			want:   "admin/",
+		},
+		{
+			name:   "both with multiple slashes",
+			parent: "admin///",
+			child:  "///test",
+			want:   "admin/test",
+		},
+		{
+			name:   "deeply nested parent",
+			parent: "org/team/project/env",
+			child:  "service",
+			want:   "org/team/project/env/service",
+		},
+		{
+			name:   "parent with spaces",
+			parent: "admin",
+			child:  "test child",
+			want:   "admin/test child",
+		},
 	}
 
 	for _, tt := range tests {
@@ -284,4 +320,82 @@ func TestValidateConnection(t *testing.T) {
 		// We don't assert success/failure here as it depends on Vault availability
 		t.Logf("ValidateConnection result: %v", err)
 	})
+}
+
+func TestLoadCACert_ErrorPaths(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupFile   func(t *testing.T) string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name: "empty PEM file",
+			setupFile: func(t *testing.T) string {
+				tmpFile := t.TempDir() + "/empty.pem"
+				err := os.WriteFile(tmpFile, []byte(""), 0644)
+				if err != nil {
+					t.Fatalf("Failed to create test file: %v", err)
+				}
+				return tmpFile
+			},
+			wantErr:     true,
+			errContains: "failed to parse CA certificate",
+		},
+		{
+			name: "non-PEM content",
+			setupFile: func(t *testing.T) string {
+				tmpFile := t.TempDir() + "/nonpem.txt"
+				err := os.WriteFile(tmpFile, []byte("This is not a PEM file"), 0644)
+				if err != nil {
+					t.Fatalf("Failed to create test file: %v", err)
+				}
+				return tmpFile
+			},
+			wantErr:     true,
+			errContains: "failed to parse CA certificate",
+		},
+		{
+			name: "PEM with wrong type",
+			setupFile: func(t *testing.T) string {
+				tmpFile := t.TempDir() + "/wrongtype.pem"
+				// Create a PEM with PRIVATE KEY type instead of CERTIFICATE
+				pemContent := `-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKj
+-----END PRIVATE KEY-----`
+				err := os.WriteFile(tmpFile, []byte(pemContent), 0644)
+				if err != nil {
+					t.Fatalf("Failed to create test file: %v", err)
+				}
+				return tmpFile
+			},
+			wantErr:     true,
+			errContains: "failed to parse CA certificate",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			certPath := tt.setupFile(t)
+
+			cfg := &config.Config{
+				VaultAddr:   "https://vault.example.com:8200",
+				VaultToken:  "root",
+				VaultCACert: certPath,
+			}
+
+			_, err := NewClient(cfg)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewClient() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr && err != nil && tt.errContains != "" {
+				if !strings.Contains(err.Error(), tt.errContains) {
+					t.Errorf("NewClient() error = %v, should contain %q", err, tt.errContains)
+				}
+			}
+		})
+	}
 }
