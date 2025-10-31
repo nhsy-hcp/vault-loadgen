@@ -554,7 +554,14 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/v1/auth/token/lookup-self" {
+				switch r.URL.Path {
+				case "/v1/sys/health":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"initialized": true,
+						"sealed":      false,
+					})
+				case "/v1/auth/token/lookup-self":
 					w.WriteHeader(http.StatusForbidden)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"permission denied"},

@@ -83,7 +83,7 @@ func TestGenerateAppRoleLoad_ConfigValidation(t *testing.T) {
 				AppRoleLogins: 10,
 			},
 			wantErr:   true,
-			errSubstr: "token",
+			errSubstr: "validation failed", // Will fail at connection or auth validation
 		},
 	}
 

@@ -163,6 +163,11 @@ func CreateNamespaces(ctx context.Context, cfg *config.Config) ([]string, error)
 		return nil, fmt.Errorf("failed to create vault client: %w", err)
 	}
 
+	// Validate connection
+	if err := client.ValidateConnection(vaultClient); err != nil {
+		return nil, fmt.Errorf("connection validation failed: %w", err)
+	}
+
 	// Validate authentication
 	if err := client.ValidateAuth(vaultClient); err != nil {
 		return nil, fmt.Errorf("authentication validation failed: %w", err)
