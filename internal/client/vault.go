@@ -51,6 +51,16 @@ func NewClient(cfg *config.Config) (*api.Client, error) {
 
 // ValidateConnection verifies successful connection to Vault
 func ValidateConnection(client *api.Client) error {
+	// Save current namespace and temporarily clear it for health check
+	// sys/health is a system-level endpoint that must be called at root
+	currentNamespace := client.Namespace()
+	client.ClearNamespace()
+	defer func() {
+		if currentNamespace != "" {
+			client.SetNamespace(currentNamespace)
+		}
+	}()
+
 	// Check if Vault is reachable and initialized
 	health, err := client.Sys().Health()
 	if err != nil {

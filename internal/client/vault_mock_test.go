@@ -318,6 +318,65 @@ func TestValidateConnection_NilHealth(t *testing.T) {
 	}
 }
 
+// TestValidateConnection_WithNamespace tests that ValidateConnection properly clears
+// and restores the namespace when checking health
+func TestValidateConnection_WithNamespace(t *testing.T) {
+	// Create mock server that succeeds for health check
+	healthCheckCalled := false
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify that the health check is called without namespace header
+		if r.URL.Path == "/v1/sys/health" {
+			healthCheckCalled = true
+			// Check that X-Vault-Namespace header is not set (or is empty)
+			namespace := r.Header.Get("X-Vault-Namespace")
+			if namespace != "" {
+				t.Errorf("Health check called with namespace header = %q, want empty", namespace)
+			}
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"initialized":  true,
+				"sealed":       false,
+				"version":      "1.15.0",
+				"cluster_name": "vault-cluster",
+			})
+		}
+	}))
+	defer server.Close()
+
+	// Create client with namespace
+	cfg := &config.Config{
+		VaultAddr:       server.URL,
+		VaultToken:      "mock-token",
+		ParentNamespace: "loadtest",
+	}
+
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+
+	// Verify namespace was set
+	if client.Namespace() != "loadtest" {
+		t.Errorf("client.Namespace() = %q, want %q", client.Namespace(), "loadtest")
+	}
+
+	// Test ValidateConnection
+	err = ValidateConnection(client)
+	if err != nil {
+		t.Errorf("ValidateConnection() error = %v, want nil", err)
+	}
+
+	// Verify health check was called
+	if !healthCheckCalled {
+		t.Error("Health check was not called")
+	}
+
+	// Verify namespace was restored after health check
+	if client.Namespace() != "loadtest" {
+		t.Errorf("client.Namespace() after ValidateConnection = %q, want %q", client.Namespace(), "loadtest")
+	}
+}
+
 // Helper function to check if a string contains a substring (case-insensitive)
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
