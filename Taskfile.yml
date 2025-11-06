@@ -156,6 +156,15 @@ tasks:
       - rm -f /tmp/vault-dev.log
       - task: vault:up
 
+  # Validation tasks
+  validate:vault-env:
+    desc: Validate required Vault environment variables are set
+    preconditions:
+      - sh: test -n "$VAULT_ADDR"
+        msg: "VAULT_ADDR environment variable must be set. Example: export VAULT_ADDR=http://127.0.0.1:8200"
+      - sh: test -n "$VAULT_TOKEN"
+        msg: "VAULT_TOKEN environment variable must be set. Example: export VAULT_TOKEN=your-token"
+
   # Development tasks
   dev:
     desc: Run in development mode with auto-reload
@@ -172,11 +181,9 @@ tasks:
 
   run:pki:
     desc: Run PKI mode example
-    deps: [build]
+    deps: [build, validate:vault-env]
     cmds:
       - |
-        export VAULT_ADDR=http://localhost:8200
-        export VAULT_TOKEN=root
         {{.BUILD_DIR}}/{{.BINARY_NAME}} pki \
           --workers 4 \
           --namespaces 0 \
@@ -186,11 +193,9 @@ tasks:
 
   run:approle:
     desc: Run AppRole mode example
-    deps: [build]
+    deps: [build, validate:vault-env]
     cmds:
       - |
-        export VAULT_ADDR=http://localhost:8200
-        export VAULT_TOKEN=root
         {{.BUILD_DIR}}/{{.BINARY_NAME}} approle \
           --workers 4 \
           --namespaces 0 \
@@ -199,11 +204,9 @@ tasks:
 
   run:kv:
     desc: Run KV mode example
-    deps: [build]
+    deps: [build, validate:vault-env]
     cmds:
       - |
-        export VAULT_ADDR=http://localhost:8200
-        export VAULT_TOKEN=root
         {{.BUILD_DIR}}/{{.BINARY_NAME}} kv \
           --workers 4 \
           --namespaces 0 \

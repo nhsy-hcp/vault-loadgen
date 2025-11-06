@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/nhsy/vault-loadgen/actions/workflows/ci.yml/badge.svg)](https://github.com/nhsy/vault-loadgen/actions/workflows/ci.yml)
 
-A high-performance load generation tool for HashiCorp Vault.
+A load generation tool for HashiCorp Vault.
 
 `vault-loadgen` is a command-line tool designed to generate synthetic load on HashiCorp Vault clusters. It helps you test Vault's performance, stability, and scalability under various workloads. It supports multiple secret engines, concurrent operations, and both Vault Enterprise (multi-namespace) and Vault OSS (single-namespace) environments.
 
