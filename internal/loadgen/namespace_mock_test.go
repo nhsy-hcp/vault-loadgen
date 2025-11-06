@@ -48,6 +48,38 @@ func TestCreateNamespace_MockedResponses(t *testing.T) {
 			},
 		},
 		{
+			name:          "successful creation with parent namespace path",
+			namespacePath: "loadtest/loadtest-456",
+			mockHandler: func(w http.ResponseWriter, r *http.Request) {
+				// Verify the API call uses only the child name, not the full path
+				// The full path should NOT be in the URL (that would cause "/ not allowed" error)
+				if r.URL.Path == "/v1/sys/namespaces/loadtest-456" {
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"data": map[string]interface{}{
+							"id":   "ns-456",
+							"path": "loadtest/loadtest-456/",
+						},
+					})
+				} else if strings.Contains(r.URL.Path, "loadtest/loadtest-456") {
+					// This would be the buggy behavior - reject it
+					w.WriteHeader(http.StatusBadRequest)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"errors": []string{`"/" is not allowed in namespace names`},
+					})
+				}
+			},
+			wantErr: false,
+			checkStats: func(t *testing.T, s *stats.Stats) {
+				if s.NamespacesCreated != 1 {
+					t.Errorf("Expected NamespacesCreated = 1, got %d", s.NamespacesCreated)
+				}
+				if s.NamespacesFailed != 0 {
+					t.Errorf("Expected NamespacesFailed = 0, got %d", s.NamespacesFailed)
+				}
+			},
+		},
+		{
 			name:          "namespace already exists (idempotent)",
 			namespacePath: "existing-ns",
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {

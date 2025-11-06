@@ -103,7 +103,9 @@ func BuildFullNamespacePath(parent, child string) string {
 
 // CreateNamespace creates a single namespace in Vault
 func CreateNamespace(ctx context.Context, vaultClient *api.Client, namespacePath string, stats *stats.Stats) error {
-	// Validate namespace name
+	// Extract child namespace name from full path
+	// If namespacePath is "parent/child", we only want "child"
+	// If namespacePath is "child", we want "child"
 	parts := strings.Split(namespacePath, "/")
 	childName := parts[len(parts)-1]
 
@@ -113,8 +115,10 @@ func CreateNamespace(ctx context.Context, vaultClient *api.Client, namespacePath
 		return err
 	}
 
-	// Create namespace
-	path := "sys/namespaces/" + namespacePath
+	// Create namespace using only the child name
+	// The parent namespace is already set on the vaultClient via SetNamespace()
+	// So we only need to specify the child name in the API path
+	path := "sys/namespaces/" + childName
 	_, err := vaultClient.Logical().Write(path, map[string]interface{}{})
 
 	if err != nil {

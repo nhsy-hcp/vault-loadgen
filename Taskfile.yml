@@ -173,15 +173,23 @@ tasks:
       - "{{.BUILD_DIR}}/{{.BINARY_NAME}} --log-level debug {{.CLI_ARGS}}"
 
   run:all:
-    desc: Run all load generation modes (PKI, AppRole, KV)
+    desc: "Run all load generation modes (PKI, AppRole, KV). Usage: task run:all [PARENT_NAMESPACE=<name>]"
     cmds:
       - task: run:pki
+        vars:
+          PARENT_NAMESPACE: "{{.PARENT_NAMESPACE | default \"\"}}"
       - task: run:approle
+        vars:
+          PARENT_NAMESPACE: "{{.PARENT_NAMESPACE | default \"\"}}"
       - task: run:kv
+        vars:
+          PARENT_NAMESPACE: "{{.PARENT_NAMESPACE | default \"\"}}"
 
   run:pki:
-    desc: Run PKI mode example
+    desc: "Run PKI mode example. Usage: task run:pki [PARENT_NAMESPACE=<name>]"
     deps: [build, validate:vault-env]
+    vars:
+      PARENT_NS_FLAG: "{{if .PARENT_NAMESPACE}}--parent-namespace={{.PARENT_NAMESPACE}}{{end}}"
     cmds:
       - |
         {{.BUILD_DIR}}/{{.BINARY_NAME}} pki \
@@ -189,22 +197,28 @@ tasks:
           --namespaces 0 \
           --pki-leases 50 \
           --pki-ttl 24h \
-          --log-level info
+          --log-level info \
+          {{.PARENT_NS_FLAG}}
 
   run:approle:
-    desc: Run AppRole mode example
+    desc: "Run AppRole mode example. Usage: task run:approle [PARENT_NAMESPACE=<name>]"
     deps: [build, validate:vault-env]
+    vars:
+      PARENT_NS_FLAG: "{{if .PARENT_NAMESPACE}}--parent-namespace={{.PARENT_NAMESPACE}}{{end}}"
     cmds:
       - |
         {{.BUILD_DIR}}/{{.BINARY_NAME}} approle \
           --workers 4 \
           --namespaces 0 \
           --approle-logins 50 \
-          --log-level info
+          --log-level info \
+          {{.PARENT_NS_FLAG}}
 
   run:kv:
-    desc: Run KV mode example
+    desc: "Run KV mode example. Usage: task run:kv [PARENT_NAMESPACE=<name>]"
     deps: [build, validate:vault-env]
+    vars:
+      PARENT_NS_FLAG: "{{if .PARENT_NAMESPACE}}--parent-namespace={{.PARENT_NAMESPACE}}{{end}}"
     cmds:
       - |
         {{.BUILD_DIR}}/{{.BINARY_NAME}} kv \
@@ -212,7 +226,8 @@ tasks:
           --namespaces 0 \
           --kv-engines 5 \
           --secrets-per-engine 20 \
-          --log-level info
+          --log-level info \
+          {{.PARENT_NS_FLAG}}
 
   # Cleanup tasks
   clean:
