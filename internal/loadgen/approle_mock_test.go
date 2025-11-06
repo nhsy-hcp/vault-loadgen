@@ -37,6 +37,9 @@ func TestSetupAppRoleAuth_MockedResponses(t *testing.T) {
 				case r.URL.Path == "/v1/sys/auth/approle" && r.Method == "POST":
 					w.WriteHeader(http.StatusOK)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/sys/policies/acl/loadtest-kv-read" && r.Method == "PUT":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
@@ -61,6 +64,9 @@ func TestSetupAppRoleAuth_MockedResponses(t *testing.T) {
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{
 						"errors": []string{"path is already in use at approle/"},
 					})
+				case r.URL.Path == "/v1/sys/policies/acl/loadtest-kv-read" && r.Method == "PUT":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
@@ -100,6 +106,9 @@ func TestSetupAppRoleAuth_MockedResponses(t *testing.T) {
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
 				switch {
 				case r.URL.Path == "/v1/sys/auth/approle" && r.Method == "POST":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/sys/policies/acl/loadtest-kv-read" && r.Method == "PUT":
 					w.WriteHeader(http.StatusOK)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
@@ -380,7 +389,8 @@ func TestGenerateAppRoleLogin_MockedResponses(t *testing.T) {
 
 			// Test generateAppRoleLogin
 			ctx := context.Background()
-			err = generateAppRoleLogin(ctx, vaultClient, tt.namespace)
+			st := stats.New()
+			err = generateAppRoleLogin(ctx, vaultClient, tt.namespace, st)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("generateAppRoleLogin() error = %v, wantErr %v", err, tt.wantErr)
@@ -435,6 +445,25 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				case r.URL.Path == "/v1/sys/auth/approle":
 					w.WriteHeader(http.StatusOK)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/sys/policies/acl/loadtest-kv-read" && r.Method == "PUT":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/sys/mounts/loadtest-kv" && r.Method == "POST":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/loadtest-kv/data/dummy" && r.Method == "PUT":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/loadtest-kv/data/dummy" && r.Method == "GET":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"data": map[string]interface{}{
+							"data": map[string]interface{}{
+								"value":     "loadtest-dummy-secret",
+								"timestamp": "1234567890",
+							},
+						},
+					})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
@@ -504,6 +533,25 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				case r.URL.Path == "/v1/sys/auth/approle":
 					w.WriteHeader(http.StatusOK)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/sys/policies/acl/loadtest-kv-read" && r.Method == "PUT":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/sys/mounts/loadtest-kv" && r.Method == "POST":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/loadtest-kv/data/dummy" && r.Method == "PUT":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{})
+				case r.URL.Path == "/v1/loadtest-kv/data/dummy" && r.Method == "GET":
+					w.WriteHeader(http.StatusOK)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"data": map[string]interface{}{
+							"data": map[string]interface{}{
+								"value":     "loadtest-dummy-secret",
+								"timestamp": "1234567890",
+							},
+						},
+					})
 				case r.URL.Path == "/v1/auth/approle/role/loadtest" && (r.Method == "POST" || r.Method == "PUT"):
 					w.WriteHeader(http.StatusOK)
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{})

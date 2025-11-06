@@ -71,8 +71,8 @@ var pkiCmd = &cobra.Command{
 
 var approleCmd = &cobra.Command{
 	Use:          "approle",
-	Short:        "Generate AppRole token leases",
-	Long:         "Create AppRole credentials and generate token leases with configurable TTL",
+	Short:        "Generate AppRole token leases with authenticated operations",
+	Long:         "Create AppRole credentials, generate token leases, and perform authenticated secret reads to simulate realistic application load",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg.Mode = "approle"

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/vault/api"
 	"golang.org/x/sync/errgroup"
@@ -57,9 +58,9 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 		namespaces = []string{cfg.ParentNamespace}
 	}
 
-	slog.Info("approle mode: setting up AppRole auth methods", "namespaces", len(namespaces))
+	slog.Info("approle mode: setting up AppRole auth methods and KV engines", "namespaces", len(namespaces))
 
-	// Setup AppRole auth methods in each namespace
+	// Setup AppRole auth methods and KV engines in each namespace
 	for _, ns := range namespaces {
 		if err := ctx.Err(); err != nil {
 			return st, err
@@ -69,7 +70,13 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 			slog.Error("failed to setup AppRole auth", "namespace", ns, "error", err)
 			return st, fmt.Errorf("failed to setup AppRole auth in namespace %q: %w", ns, err)
 		}
-		slog.Debug("approle auth setup complete", "namespace", ns)
+
+		if err := setupAppRoleKVEngine(ctx, vaultClient, ns); err != nil {
+			slog.Error("failed to setup KV engine", "namespace", ns, "error", err)
+			return st, fmt.Errorf("failed to setup KV engine in namespace %q: %w", ns, err)
+		}
+
+		slog.Debug("approle auth and KV engine setup complete", "namespace", ns)
 	}
 
 	// Calculate logins per namespace
@@ -112,7 +119,7 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 					return err
 				}
 
-				if err := generateAppRoleLogin(ctx, vaultClient, ns); err != nil {
+				if err := generateAppRoleLogin(ctx, vaultClient, ns, st); err != nil {
 					slog.Warn("failed to generate AppRole login", "namespace", ns, "error", err)
 					st.IncLeasesFailed()
 					return nil // Don't stop other workers
@@ -133,10 +140,13 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 
 	// Log summary
 	slog.Info("approle mode complete",
-		"created", st.LeasesCreated,
-		"failed", st.LeasesFailed,
+		"logins_created", st.LeasesCreated,
+		"logins_failed", st.LeasesFailed,
+		"reads_succeeded", st.AuthenticatedReadsSucceeded,
+		"reads_failed", st.AuthenticatedReadsFailed,
 		"duration", st.Duration(),
-		"leases_per_sec", st.LeasesPerSecond())
+		"leases_per_sec", st.LeasesPerSecond(),
+		"reads_per_sec", st.AuthenticatedReadsPerSecond())
 
 	return st, nil
 }
@@ -169,14 +179,26 @@ func setupAppRoleAuth(ctx context.Context, vaultClient *api.Client, namespace st
 		}
 	}
 
-	// Create AppRole role
+	// Create a policy for KV read access
+	policyName := "loadtest-kv-read"
+	policyRules := `
+path "loadtest-kv/data/dummy" {
+  capabilities = ["read"]
+}
+`
+	err = nsClient.Sys().PutPolicy(policyName, policyRules)
+	if err != nil {
+		return fmt.Errorf("failed to create policy: %w", err)
+	}
+
+	// Create AppRole role with KV read policy
 	roleName := "loadtest"
 	roleData := map[string]interface{}{
 		"token_ttl":          cfg.TokenTTL,
 		"token_max_ttl":      cfg.TokenMaxTTL,
 		"secret_id_ttl":      cfg.SecretIDTTL,
 		"bind_secret_id":     true,
-		"token_policies":     []string{"default"},
+		"token_policies":     []string{"default", policyName},
 		"secret_id_num_uses": 0, // Unlimited uses for load testing
 	}
 
@@ -188,8 +210,56 @@ func setupAppRoleAuth(ctx context.Context, vaultClient *api.Client, namespace st
 	return nil
 }
 
+// setupAppRoleKVEngine enables a KV v2 engine and creates a dummy secret for authenticated testing
+func setupAppRoleKVEngine(ctx context.Context, vaultClient *api.Client, namespace string) error {
+	// Create a client for this namespace
+	nsClient, err := vaultClient.Clone()
+	if err != nil {
+		return fmt.Errorf("failed to clone client: %w", err)
+	}
+
+	if namespace != "" {
+		nsClient.SetNamespace(namespace)
+	}
+
+	// Enable KV v2 secrets engine
+	enginePath := "loadtest-kv"
+	mountInput := &api.MountInput{
+		Type: "kv-v2",
+		Options: map[string]string{
+			"version": "2",
+		},
+	}
+
+	err = nsClient.Sys().Mount(enginePath, mountInput)
+	if err != nil {
+		// Check if already mounted
+		if strings.Contains(err.Error(), "path is already in use") {
+			slog.Debug("kv engine already mounted", "namespace", namespace, "engine", enginePath)
+		} else {
+			return fmt.Errorf("failed to mount kv engine: %w", err)
+		}
+	}
+
+	// Create dummy secret for authenticated read testing
+	secretPath := enginePath + "/data/dummy"
+	secretData := map[string]interface{}{
+		"data": map[string]interface{}{
+			"value":     "loadtest-dummy-secret",
+			"timestamp": fmt.Sprintf("%d", time.Now().Unix()),
+		},
+	}
+
+	_, err = nsClient.Logical().Write(secretPath, secretData)
+	if err != nil {
+		return fmt.Errorf("failed to create dummy secret: %w", err)
+	}
+
+	return nil
+}
+
 // generateAppRoleLogin generates a token lease by performing an AppRole login
-func generateAppRoleLogin(ctx context.Context, vaultClient *api.Client, namespace string) error {
+func generateAppRoleLogin(ctx context.Context, vaultClient *api.Client, namespace string, st *stats.Stats) error {
 	// Create a client for this namespace
 	nsClient, err := vaultClient.Clone()
 	if err != nil {
@@ -245,6 +315,39 @@ func generateAppRoleLogin(ctx context.Context, vaultClient *api.Client, namespac
 		"namespace", namespace,
 		"lease_id", loginResp.Auth.ClientToken,
 		"lease_duration", loginResp.Auth.LeaseDuration)
+
+	// Perform authenticated read using the newly created token
+	authenticatedClient, err := nsClient.Clone()
+	if err != nil {
+		st.IncAuthenticatedReadsFailed()
+		return fmt.Errorf("failed to clone client for authenticated read: %w", err)
+	}
+
+	// Set the new token
+	authenticatedClient.SetToken(loginResp.Auth.ClientToken)
+	if namespace != "" {
+		authenticatedClient.SetNamespace(namespace)
+	}
+
+	// Read the dummy secret
+	secretPath := "loadtest-kv/data/dummy"
+	secret, err := authenticatedClient.Logical().Read(secretPath)
+	if err != nil {
+		st.IncAuthenticatedReadsFailed()
+		slog.Warn("authenticated read failed", "namespace", namespace, "error", err)
+		return nil // Don't fail the entire operation, just track the failure
+	}
+
+	if secret == nil || secret.Data == nil {
+		st.IncAuthenticatedReadsFailed()
+		slog.Warn("authenticated read returned no data", "namespace", namespace)
+		return nil
+	}
+
+	st.IncAuthenticatedReadsSucceeded()
+	slog.Debug("authenticated read successful",
+		"namespace", namespace,
+		"secret_path", secretPath)
 
 	return nil
 }

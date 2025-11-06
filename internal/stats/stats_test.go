@@ -55,6 +55,22 @@ func TestStats_SecretsIncrement(t *testing.T) {
 	}
 }
 
+func TestStats_AuthenticatedReadsIncrement(t *testing.T) {
+	s := New()
+
+	s.IncAuthenticatedReadsSucceeded()
+	s.IncAuthenticatedReadsSucceeded()
+	s.IncAuthenticatedReadsSucceeded()
+	s.IncAuthenticatedReadsFailed()
+
+	if s.AuthenticatedReadsSucceeded != 3 {
+		t.Errorf("AuthenticatedReadsSucceeded = %d, want 3", s.AuthenticatedReadsSucceeded)
+	}
+	if s.AuthenticatedReadsFailed != 1 {
+		t.Errorf("AuthenticatedReadsFailed = %d, want 1", s.AuthenticatedReadsFailed)
+	}
+}
+
 func TestStats_Duration(t *testing.T) {
 	s := New()
 
@@ -101,16 +117,26 @@ func TestStats_TotalOperations(t *testing.T) {
 			want: 55,
 		},
 		{
+			name: "authenticated reads only",
+			setupFunc: func(s *Stats) {
+				s.AuthenticatedReadsSucceeded = 80
+				s.AuthenticatedReadsFailed = 20
+			},
+			want: 100,
+		},
+		{
 			name: "mixed operations",
 			setupFunc: func(s *Stats) {
 				s.NamespacesCreated = 5
 				s.LeasesCreated = 100
 				s.SecretsCreated = 50
+				s.AuthenticatedReadsSucceeded = 80
 				s.NamespacesFailed = 1
 				s.LeasesFailed = 10
 				s.SecretsFailed = 5
+				s.AuthenticatedReadsFailed = 20
 			},
-			want: 171,
+			want: 271,
 		},
 	}
 
@@ -142,6 +168,37 @@ func TestStats_OpsPerSecond(t *testing.T) {
 	// Should be around 110 ops/sec
 	if ops < 100 || ops > 120 {
 		t.Errorf("OpsPerSecond() = %.2f, want ~110", ops)
+	}
+}
+
+func TestStats_AuthenticatedReadsPerSecond(t *testing.T) {
+	s := New()
+
+	s.AuthenticatedReadsSucceeded = 50
+
+	// Simulate 2 second duration
+	s.StartTime = time.Now().Add(-2 * time.Second)
+	s.EndTime = time.Now()
+
+	reads := s.AuthenticatedReadsPerSecond()
+
+	// Should be around 25 reads/sec
+	if reads < 20 || reads > 30 {
+		t.Errorf("AuthenticatedReadsPerSecond() = %.2f, want ~25", reads)
+	}
+}
+
+func TestStats_AuthenticatedReadsPerSecond_ZeroDuration(t *testing.T) {
+	s := New()
+	s.AuthenticatedReadsSucceeded = 100
+	s.End() // Set same end time as start time for zero duration
+
+	// Reset to exact same time to ensure zero duration
+	s.EndTime = s.StartTime
+
+	reads := s.AuthenticatedReadsPerSecond()
+	if reads != 0 {
+		t.Errorf("AuthenticatedReadsPerSecond() = %.2f, want 0", reads)
 	}
 }
 
@@ -205,6 +262,14 @@ func TestStats_SuccessRate(t *testing.T) {
 				s.LeasesFailed = 50
 			},
 			want: 50.0,
+		},
+		{
+			name: "authenticated reads success",
+			setupFunc: func(s *Stats) {
+				s.AuthenticatedReadsSucceeded = 90
+				s.AuthenticatedReadsFailed = 10
+			},
+			want: 90.0,
 		},
 		{
 			name: "0% success",

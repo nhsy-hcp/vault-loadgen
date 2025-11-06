@@ -21,6 +21,10 @@ type Stats struct {
 	SecretsCreated int64
 	SecretsFailed  int64
 
+	// Authenticated read operations (AppRole)
+	AuthenticatedReadsSucceeded int64
+	AuthenticatedReadsFailed    int64
+
 	// Timing
 	StartTime time.Time
 	EndTime   time.Time
@@ -68,6 +72,16 @@ func (s *Stats) IncSecretsFailed() {
 	atomic.AddInt64(&s.SecretsFailed, 1)
 }
 
+// IncAuthenticatedReadsSucceeded atomically increments the authenticated reads succeeded counter
+func (s *Stats) IncAuthenticatedReadsSucceeded() {
+	atomic.AddInt64(&s.AuthenticatedReadsSucceeded, 1)
+}
+
+// IncAuthenticatedReadsFailed atomically increments the authenticated reads failed counter
+func (s *Stats) IncAuthenticatedReadsFailed() {
+	atomic.AddInt64(&s.AuthenticatedReadsFailed, 1)
+}
+
 // End marks the end time for statistics
 func (s *Stats) End() {
 	s.EndTime = time.Now()
@@ -85,7 +99,8 @@ func (s *Stats) Duration() time.Duration {
 func (s *Stats) TotalOperations() int {
 	return int(s.NamespacesCreated + s.NamespacesSkipped + s.NamespacesFailed +
 		s.LeasesCreated + s.LeasesFailed +
-		s.SecretsCreated + s.SecretsFailed)
+		s.SecretsCreated + s.SecretsFailed +
+		s.AuthenticatedReadsSucceeded + s.AuthenticatedReadsFailed)
 }
 
 // OpsPerSecond calculates operations per second
@@ -115,13 +130,22 @@ func (s *Stats) SecretsPerSecond() float64 {
 	return float64(s.SecretsCreated) / duration.Seconds()
 }
 
+// AuthenticatedReadsPerSecond calculates authenticated reads per second
+func (s *Stats) AuthenticatedReadsPerSecond() float64 {
+	duration := s.Duration()
+	if duration == 0 {
+		return 0
+	}
+	return float64(s.AuthenticatedReadsSucceeded) / duration.Seconds()
+}
+
 // SuccessRate calculates the success rate as a percentage
 func (s *Stats) SuccessRate() float64 {
 	total := s.TotalOperations()
 	if total == 0 {
 		return 0
 	}
-	successful := s.NamespacesCreated + s.LeasesCreated + s.SecretsCreated
+	successful := s.NamespacesCreated + s.LeasesCreated + s.SecretsCreated + s.AuthenticatedReadsSucceeded
 	return float64(successful) / float64(total) * 100
 }
 
@@ -161,12 +185,23 @@ func (s *Stats) PrintSummary(mode string) {
 		fmt.Println()
 	}
 
+	// Authenticated read stats
+	if s.AuthenticatedReadsSucceeded > 0 || s.AuthenticatedReadsFailed > 0 {
+		fmt.Println("Authenticated Reads:")
+		fmt.Printf("  Succeeded: %d\n", s.AuthenticatedReadsSucceeded)
+		fmt.Printf("  Failed:    %d\n", s.AuthenticatedReadsFailed)
+		fmt.Println()
+	}
+
 	// Performance metrics
 	fmt.Println("Performance:")
 	fmt.Printf("  Total Operations: %d\n", s.TotalOperations())
 	fmt.Printf("  Operations/sec:   %.2f\n", s.OpsPerSecond())
 	if s.LeasesCreated > 0 {
 		fmt.Printf("  Leases/sec:       %.2f\n", s.LeasesPerSecond())
+	}
+	if s.AuthenticatedReadsSucceeded > 0 {
+		fmt.Printf("  Auth Reads/sec:   %.2f\n", s.AuthenticatedReadsPerSecond())
 	}
 	fmt.Printf("  Success Rate:     %.1f%%\n", s.SuccessRate())
 	fmt.Println(separator)
