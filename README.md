@@ -111,6 +111,19 @@ This command creates 10 child namespaces and distributes the creation of 1,000 c
   --pki-ttl 48h
 ```
 
+#### Vault Enterprise with Parent Namespace
+
+This command creates child namespaces under a parent namespace. This is useful for organizing load tests in a dedicated namespace hierarchy.
+
+```sh
+./bin/vault-loadgen pki \
+  --parent-namespace loadtest \
+  --namespaces 10 \
+  --pki-leases 1000 \
+  --workers 8 \
+  --pki-ttl 48h
+```
+
 #### Vault OSS (Single-Namespace)
 
 This command runs all operations in the root namespace, as Vault OSS does not support namespaces. Set `--namespaces=0` for single-namespace mode.
@@ -135,6 +148,18 @@ This command creates 5 child namespaces and performs 500 AppRole logins, distrib
   --workers 8
 ```
 
+#### Vault Enterprise with Parent Namespace
+
+This command creates child namespaces under a parent namespace for organized testing.
+
+```sh
+./bin/vault-loadgen approle \
+  --parent-namespace loadtest \
+  --namespaces 5 \
+  --approle-logins 500 \
+  --workers 8
+```
+
 #### Vault OSS (Single-Namespace)
 
 This command performs 200 AppRole logins in the root namespace.
@@ -154,6 +179,19 @@ This command creates 5 child namespaces. In each namespace, it creates 10 KVv2 e
 
 ```sh
 ./bin/vault-loadgen kv \
+  --namespaces 5 \
+  --kv-engines 10 \
+  --secrets-per-engine 100 \
+  --workers 16
+```
+
+#### Vault Enterprise with Parent Namespace
+
+This command creates child namespaces under a parent namespace for organized KV secret testing.
+
+```sh
+./bin/vault-loadgen kv \
+  --parent-namespace loadtest \
   --namespaces 5 \
   --kv-engines 10 \
   --secrets-per-engine 100 \
@@ -319,14 +357,16 @@ task vault:reset
 # Run all load generation modes (PKI, AppRole, KV)
 task run:all
 
-# Run PKI mode example
+# Run individual modes
 task run:pki
-
-# Run AppRole mode example
 task run:approle
-
-# Run KV mode example
 task run:kv
+
+# Run with a parent namespace (useful for Vault Enterprise)
+task run:all PARENT_NAMESPACE=loadtest
+task run:pki PARENT_NAMESPACE=loadtest
+task run:approle PARENT_NAMESPACE=loadtest
+task run:kv PARENT_NAMESPACE=loadtest
 ```
 
 ### Code Quality

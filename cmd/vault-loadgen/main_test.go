@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/nhsy/vault-loadgen/internal/config"
 )
@@ -387,5 +389,99 @@ func TestKVCmd_RunE(t *testing.T) {
 	}
 	if cfg.Mode != "kv" {
 		t.Errorf("kvCmd.RunE() should set mode to 'kv', got %q", cfg.Mode)
+	}
+}
+
+func TestVaultSkipVerify_EnvironmentVariable(t *testing.T) {
+	// Test that VAULT_SKIP_VERIFY environment variable is properly read
+	tests := []struct {
+		name           string
+		envValue       string
+		cliValue       bool
+		expectedResult bool
+	}{
+		{
+			name:           "environment variable true",
+			envValue:       "true",
+			cliValue:       false,
+			expectedResult: true,
+		},
+		{
+			name:           "environment variable false",
+			envValue:       "false",
+			cliValue:       false,
+			expectedResult: false,
+		},
+		{
+			name:           "environment variable 1",
+			envValue:       "1",
+			cliValue:       false,
+			expectedResult: true,
+		},
+		{
+			name:           "environment variable 0",
+			envValue:       "0",
+			cliValue:       false,
+			expectedResult: false,
+		},
+		{
+			name:           "environment variable empty string",
+			envValue:       "",
+			cliValue:       false,
+			expectedResult: false,
+		},
+		{
+			name:           "cli flag true overrides environment false",
+			envValue:       "false",
+			cliValue:       true,
+			expectedResult: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save and restore original config and environment
+			originalCfg := cfg
+			defer func() { cfg = originalCfg }()
+
+			// Clear any existing environment variable
+			oldEnv := os.Getenv("VAULT_SKIP_VERIFY")
+			defer func() {
+				if oldEnv != "" {
+					os.Setenv("VAULT_SKIP_VERIFY", oldEnv)
+				} else {
+					os.Unsetenv("VAULT_SKIP_VERIFY")
+				}
+			}()
+
+			// Create new config with default values
+			cfg = config.NewDefault()
+			cfg.VaultSkipVerify = tt.cliValue
+
+			// Set environment variable if specified
+			if tt.envValue != "" {
+				os.Setenv("VAULT_SKIP_VERIFY", tt.envValue)
+			} else {
+				os.Unsetenv("VAULT_SKIP_VERIFY")
+			}
+
+			// Reset and reconfigure Viper to pick up the new environment variable
+			viper.Reset()
+			viper.SetEnvPrefix("VAULT")
+			viper.AutomaticEnv()
+
+			// Bind the flag
+			_ = viper.BindPFlag("skip_verify", rootCmd.PersistentFlags().Lookup("vault-skip-verify"))
+
+			// Apply environment variable logic (same as in init())
+			if skipVerify := viper.GetBool("skip_verify"); skipVerify && !cfg.VaultSkipVerify {
+				cfg.VaultSkipVerify = skipVerify
+			}
+
+			// Verify result
+			if cfg.VaultSkipVerify != tt.expectedResult {
+				t.Errorf("VaultSkipVerify = %v, want %v", cfg.VaultSkipVerify, tt.expectedResult)
+			}
+		})
 	}
 }

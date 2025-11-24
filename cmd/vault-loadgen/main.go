@@ -121,6 +121,7 @@ func init() {
 	_ = viper.BindPFlag("addr", rootCmd.PersistentFlags().Lookup("vault-addr"))
 	_ = viper.BindPFlag("token", rootCmd.PersistentFlags().Lookup("vault-token"))
 	_ = viper.BindPFlag("cacert", rootCmd.PersistentFlags().Lookup("vault-cacert"))
+	_ = viper.BindPFlag("skip_verify", rootCmd.PersistentFlags().Lookup("vault-skip-verify"))
 
 	// Set defaults from environment variables
 	if addr := viper.GetString("addr"); addr != "" && cfg.VaultAddr == "" {
@@ -131,6 +132,9 @@ func init() {
 	}
 	if cacert := viper.GetString("cacert"); cacert != "" && cfg.VaultCACert == "" {
 		cfg.VaultCACert = cacert
+	}
+	if skipVerify := viper.GetBool("skip_verify"); skipVerify && !cfg.VaultSkipVerify {
+		cfg.VaultSkipVerify = skipVerify
 	}
 
 	// PKI command flags
