@@ -189,6 +189,17 @@ func ValidateNamespace(client *api.Client, namespace string) error {
 		return nil
 	}
 
+	// Save current namespace and temporarily clear it for validation
+	// We need to validate the namespace from the parent context (usually root)
+	// not from within the namespace itself
+	currentNamespace := client.Namespace()
+	client.ClearNamespace()
+	defer func() {
+		if currentNamespace != "" {
+			client.SetNamespace(currentNamespace)
+		}
+	}()
+
 	// Try to read namespace
 	path := fmt.Sprintf("sys/namespaces/%s", namespace)
 	secret, err := client.Logical().Read(path)

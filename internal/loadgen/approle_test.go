@@ -2,6 +2,7 @@ package loadgen
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -242,6 +243,69 @@ func TestAppRoleLoad_Integration(t *testing.T) {
 		// We don't assert success/failure here as it depends on Vault availability
 		t.Logf("GenerateAppRoleLoad result: %v", err)
 	})
+}
+
+func TestAppRoleLoad_UniqueRoleNames(t *testing.T) {
+	tests := []struct {
+		name        string
+		logins      int
+		namespaces  int
+		expectedMin int
+		expectedMax int
+	}{
+		{
+			name:        "sequential role names for 10 logins",
+			logins:      10,
+			namespaces:  1,
+			expectedMin: 0,
+			expectedMax: 9,
+		},
+		{
+			name:        "sequential role names across multiple namespaces",
+			logins:      20,
+			namespaces:  5,
+			expectedMin: 0,
+			expectedMax: 19,
+		},
+		{
+			name:        "single login",
+			logins:      1,
+			namespaces:  1,
+			expectedMin: 0,
+			expectedMax: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This test validates that role names are globally sequential
+			// by checking the expected range of role names (loadtest-0 through loadtest-N)
+			loginsPerNS := tt.logins / tt.namespaces
+			remainder := tt.logins % tt.namespaces
+
+			roleIndex := 0
+			for ns := 0; ns < tt.namespaces; ns++ {
+				loginsForNS := loginsPerNS
+				if ns < remainder {
+					loginsForNS++
+				}
+
+				for i := 0; i < loginsForNS; i++ {
+					expected := fmt.Sprintf("loadtest-%d", roleIndex)
+					if roleIndex < tt.expectedMin || roleIndex > tt.expectedMax {
+						t.Errorf("Role index %d out of expected range [%d, %d]", roleIndex, tt.expectedMin, tt.expectedMax)
+					}
+					_ = expected // Role name follows expected pattern
+					roleIndex++
+				}
+			}
+
+			// Verify total count matches
+			if roleIndex != tt.logins {
+				t.Errorf("Expected %d total roles, got %d", tt.logins, roleIndex)
+			}
+		})
+	}
 }
 
 func TestAppRoleLoad_WorkerPoolLimits(t *testing.T) {

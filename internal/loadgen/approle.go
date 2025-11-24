@@ -98,6 +98,9 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(cfg.Workers)
 
+	// Global counter for unique role names across all namespaces
+	loginIndex := 0
+
 	for nsIndex, ns := range namespaces {
 		// Calculate logins for this namespace
 		loginsForNS := loginsPerNamespace
@@ -108,6 +111,8 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 		// Generate logins for this namespace
 		for i := 0; i < loginsForNS; i++ {
 			ns := ns // Capture for goroutine
+			roleName := fmt.Sprintf("loadtest-%d", loginIndex)
+			loginIndex++
 
 			g.Go(func() error {
 				// Wait for rate limiter
@@ -119,8 +124,8 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 					return err
 				}
 
-				if err := generateAppRoleLogin(ctx, vaultClient, ns, st); err != nil {
-					slog.Warn("failed to generate AppRole login", "namespace", ns, "error", err)
+				if err := generateAppRoleLogin(ctx, vaultClient, ns, roleName, cfg, st); err != nil {
+					slog.Warn("failed to generate AppRole login", "namespace", ns, "role", roleName, "error", err)
 					st.IncLeasesFailed()
 					return nil // Don't stop other workers
 				}
@@ -191,21 +196,8 @@ path "loadtest-kv/data/dummy" {
 		return fmt.Errorf("failed to create policy: %w", err)
 	}
 
-	// Create AppRole role with KV read policy
-	roleName := "loadtest"
-	roleData := map[string]interface{}{
-		"token_ttl":          cfg.TokenTTL,
-		"token_max_ttl":      cfg.TokenMaxTTL,
-		"secret_id_ttl":      cfg.SecretIDTTL,
-		"bind_secret_id":     true,
-		"token_policies":     []string{"default", policyName},
-		"secret_id_num_uses": 0, // Unlimited uses for load testing
-	}
-
-	_, err = nsClient.Logical().Write("auth/"+authPath+"/role/"+roleName, roleData)
-	if err != nil {
-		return fmt.Errorf("failed to create approle role: %w", err)
-	}
+	// Note: Individual AppRole roles are created on-demand during worker execution
+	// This allows for parallel role creation and unique role per login for accurate client counting
 
 	return nil
 }
@@ -258,8 +250,8 @@ func setupAppRoleKVEngine(ctx context.Context, vaultClient *api.Client, namespac
 	return nil
 }
 
-// generateAppRoleLogin generates a token lease by performing an AppRole login
-func generateAppRoleLogin(ctx context.Context, vaultClient *api.Client, namespace string, st *stats.Stats) error {
+// createAppRoleRole creates an individual AppRole role with idempotent behavior
+func createAppRoleRole(ctx context.Context, vaultClient *api.Client, namespace string, roleName string, cfg *config.Config) error {
 	// Create a client for this namespace
 	nsClient, err := vaultClient.Clone()
 	if err != nil {
@@ -271,7 +263,50 @@ func generateAppRoleLogin(ctx context.Context, vaultClient *api.Client, namespac
 	}
 
 	authPath := "approle"
-	roleName := "loadtest"
+	policyName := "loadtest-kv-read"
+
+	// Create AppRole role with shared policy
+	roleData := map[string]interface{}{
+		"token_ttl":          cfg.TokenTTL,
+		"token_max_ttl":      cfg.TokenMaxTTL,
+		"secret_id_ttl":      cfg.SecretIDTTL,
+		"bind_secret_id":     true,
+		"token_policies":     []string{"default", policyName},
+		"secret_id_num_uses": 0, // Unlimited uses for load testing
+	}
+
+	_, err = nsClient.Logical().Write("auth/"+authPath+"/role/"+roleName, roleData)
+	if err != nil {
+		// Check if role already exists
+		if strings.Contains(err.Error(), "role already exists") || strings.Contains(err.Error(), "already in use") {
+			slog.Debug("approle role already exists", "namespace", namespace, "role", roleName)
+			return nil
+		}
+		return fmt.Errorf("failed to create approle role %q: %w", roleName, err)
+	}
+
+	slog.Debug("approle role created", "namespace", namespace, "role", roleName)
+	return nil
+}
+
+// generateAppRoleLogin generates a token lease by performing an AppRole login
+func generateAppRoleLogin(ctx context.Context, vaultClient *api.Client, namespace string, roleName string, cfg *config.Config, st *stats.Stats) error {
+	// Create a client for this namespace
+	nsClient, err := vaultClient.Clone()
+	if err != nil {
+		return fmt.Errorf("failed to clone client: %w", err)
+	}
+
+	if namespace != "" {
+		nsClient.SetNamespace(namespace)
+	}
+
+	// Create the AppRole role on-demand (idempotent)
+	if err := createAppRoleRole(ctx, vaultClient, namespace, roleName, cfg); err != nil {
+		return fmt.Errorf("failed to create approle role: %w", err)
+	}
+
+	authPath := "approle"
 
 	// Get role ID
 	roleIDPath := "auth/" + authPath + "/role/" + roleName + "/role-id"
