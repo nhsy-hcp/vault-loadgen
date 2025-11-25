@@ -137,7 +137,6 @@ func TestValidateLoad_KV(t *testing.T) {
 	tests := []struct {
 		name             string
 		namespaces       int
-		createNamespaces bool
 		kvEngines        int
 		secretsPerEngine int
 		createdSecrets   int64
@@ -147,7 +146,6 @@ func TestValidateLoad_KV(t *testing.T) {
 		{
 			name:             "single namespace - all secrets created",
 			namespaces:       0,
-			createNamespaces: false,
 			kvEngines:        5,
 			secretsPerEngine: 100,
 			createdSecrets:   500, // 1 namespace * 5 engines * 100 secrets
@@ -157,7 +155,6 @@ func TestValidateLoad_KV(t *testing.T) {
 		{
 			name:             "multi namespace - all secrets created",
 			namespaces:       3,
-			createNamespaces: true,
 			kvEngines:        2,
 			secretsPerEngine: 10,
 			createdSecrets:   60, // 3 namespaces * 2 engines * 10 secrets
@@ -167,7 +164,6 @@ func TestValidateLoad_KV(t *testing.T) {
 		{
 			name:             "some secrets failed",
 			namespaces:       0,
-			createNamespaces: false,
 			kvEngines:        1,
 			secretsPerEngine: 100,
 			createdSecrets:   90,
@@ -181,7 +177,6 @@ func TestValidateLoad_KV(t *testing.T) {
 			cfg := &config.Config{
 				Mode:             "kv",
 				Namespaces:       tt.namespaces,
-				CreateNamespaces: tt.createNamespaces,
 				KVEngines:        tt.kvEngines,
 				SecretsPerEngine: tt.secretsPerEngine,
 			}
@@ -229,36 +224,31 @@ func TestValidateLoad_UnknownMode(t *testing.T) {
 
 func TestGetNamespaces(t *testing.T) {
 	tests := []struct {
-		name             string
-		namespaces       int
-		createNamespaces bool
-		expectedCount    int
+		name          string
+		namespaces    int
+		expectedCount int
 	}{
 		{
-			name:             "single namespace mode",
-			namespaces:       0,
-			createNamespaces: false,
-			expectedCount:    1,
+			name:          "single namespace mode",
+			namespaces:    0,
+			expectedCount: 1,
 		},
 		{
-			name:             "multi namespace mode",
-			namespaces:       5,
-			createNamespaces: true,
-			expectedCount:    5,
+			name:          "multi namespace mode",
+			namespaces:    5,
+			expectedCount: 5,
 		},
 		{
-			name:             "namespace creation disabled",
-			namespaces:       10,
-			createNamespaces: false,
-			expectedCount:    1,
+			name:          "multi namespace mode large",
+			namespaces:    100,
+			expectedCount: 100,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &config.Config{
-				Namespaces:       tt.namespaces,
-				CreateNamespaces: tt.createNamespaces,
+				Namespaces: tt.namespaces,
 			}
 
 			namespaces := getNamespaces(cfg)

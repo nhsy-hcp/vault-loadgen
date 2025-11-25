@@ -44,7 +44,7 @@ func (w *KVWorker) Setup(ctx context.Context, namespace string) error {
 	for engineIndex := 0; engineIndex < w.cfg.KVEngines; engineIndex++ {
 		engineName := fmt.Sprintf("secret-%d", engineIndex)
 
-		if err := setupKVEngine(ctx, w.client, namespace, engineName); err != nil {
+		if err := setupKVEngine(ctx, w.client, namespace, engineName, w.stats); err != nil {
 			return fmt.Errorf("failed to setup KV engine %q: %w", engineName, err)
 		}
 
@@ -180,7 +180,7 @@ func GenerateKVLoad(ctx context.Context, cfg *config.Config) (*stats.Stats, erro
 }
 
 // setupKVEngine enables and configures a KV v2 secrets engine in the given namespace
-func setupKVEngine(ctx context.Context, vaultClient *api.Client, namespace string, engineName string) error {
+func setupKVEngine(ctx context.Context, vaultClient *api.Client, namespace string, engineName string, st *stats.Stats) error {
 	// Create a client for this namespace
 	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
@@ -200,9 +200,13 @@ func setupKVEngine(ctx context.Context, vaultClient *api.Client, namespace strin
 		// Check if already mounted
 		if strings.Contains(err.Error(), "path is already in use") {
 			slog.Debug("kv engine already mounted", "namespace", namespace, "engine", engineName)
+			st.IncKVEnginesSkipped()
 		} else {
+			st.IncKVEnginesFailed()
 			return fmt.Errorf("failed to mount kv engine: %w", err)
 		}
+	} else {
+		st.IncKVEnginesEnabled()
 	}
 
 	return nil

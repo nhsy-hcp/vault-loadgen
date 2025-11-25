@@ -449,7 +449,6 @@ func TestFormatOSSNamespaceError(t *testing.T) {
 		"Vault OSS",
 		"Enterprise-only",
 		"--namespaces=0",
-		"--create-namespaces=false",
 		"single-namespace mode",
 	}
 

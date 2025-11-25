@@ -112,9 +112,20 @@ tasks:
         fi
 
   lint:
-    desc: Run go vet
+    desc: Run go vet and golangci-lint
     cmds:
       - go vet ./...
+      - task: lint:golangci
+
+  lint:golangci:
+    desc: Run golangci-lint
+    cmds:
+      - |
+        if command -v golangci-lint >/dev/null 2>&1; then
+          golangci-lint run --timeout=5m
+        else
+          echo "golangci-lint not installed, skipping. Install from: https://golangci-lint.run/welcome/install/"
+        fi
 
   # Vault testing environment tasks
   vault:up:

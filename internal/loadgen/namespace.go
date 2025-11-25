@@ -90,8 +90,6 @@ func FormatOSSNamespaceError() error {
 
 To run load tests on Vault OSS, use single-namespace mode:
   --namespaces=0
-or
-  --create-namespaces=false
 
 All operations will run in the root namespace (or --parent-namespace if specified)`)
 }

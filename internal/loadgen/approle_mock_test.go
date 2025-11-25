@@ -114,7 +114,8 @@ func TestSetupAppRoleAuth_MockedResponses(t *testing.T) {
 
 			// Test setupAppRoleAuth
 			ctx := context.Background()
-			err = setupAppRoleAuth(ctx, vaultClient, tt.namespace, tt.cfg)
+			st := stats.New()
+			err = setupAppRoleAuth(ctx, vaultClient, tt.namespace, tt.cfg, st)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("setupAppRoleAuth() error = %v, wantErr %v", err, tt.wantErr)
@@ -456,7 +457,6 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				TokenMaxTTL:      "2h",
 				SecretIDTTL:      "1h",
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -545,7 +545,6 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				TokenMaxTTL:      "2h",
 				SecretIDTTL:      "1h",
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -632,7 +631,6 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				TokenMaxTTL:      "2h",
 				SecretIDTTL:      "1h",
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -662,7 +660,6 @@ func TestGenerateAppRoleLoad_MockedEndToEnd(t *testing.T) {
 				TokenMaxTTL:      "2h",
 				SecretIDTTL:      "1h",
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -757,7 +754,6 @@ func TestGenerateAppRoleLoad_ContextCancellation(t *testing.T) {
 		TokenMaxTTL:      "2h",
 		SecretIDTTL:      "1h",
 		Workers:          2,
-		CreateNamespaces: false,
 		ParentNamespace:  "",
 	}
 

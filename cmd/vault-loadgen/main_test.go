@@ -227,7 +227,6 @@ func TestRootCmd_PersistentFlags(t *testing.T) {
 		"parent-namespace",
 		"workers",
 		"namespaces",
-		"create-namespaces",
 		"log-level",
 		"rate-limit",
 		"dry-run",
@@ -335,6 +334,7 @@ func TestPKICmd_RunE(t *testing.T) {
 		VaultAddr:  "http://127.0.0.1:8200",
 		VaultToken: "root",
 		PKILeases:  1,
+		Workers:    1,
 	}
 
 	// Test that RunE function sets the mode
@@ -358,6 +358,7 @@ func TestAppRoleCmd_RunE(t *testing.T) {
 		VaultAddr:     "http://127.0.0.1:8200",
 		VaultToken:    "root",
 		AppRoleLogins: 1,
+		Workers:       1,
 	}
 
 	// Test that RunE function sets the mode
@@ -380,6 +381,7 @@ func TestKVCmd_RunE(t *testing.T) {
 		VaultToken:       "root",
 		KVEngines:        1,
 		SecretsPerEngine: 1,
+		Workers:          1,
 	}
 
 	// Test that RunE function sets the mode
@@ -448,9 +450,9 @@ func TestVaultSkipVerify_EnvironmentVariable(t *testing.T) {
 			oldEnv := os.Getenv("VAULT_SKIP_VERIFY")
 			defer func() {
 				if oldEnv != "" {
-					os.Setenv("VAULT_SKIP_VERIFY", oldEnv)
+					_ = os.Setenv("VAULT_SKIP_VERIFY", oldEnv)
 				} else {
-					os.Unsetenv("VAULT_SKIP_VERIFY")
+					_ = os.Unsetenv("VAULT_SKIP_VERIFY")
 				}
 			}()
 
@@ -460,9 +462,9 @@ func TestVaultSkipVerify_EnvironmentVariable(t *testing.T) {
 
 			// Set environment variable if specified
 			if tt.envValue != "" {
-				os.Setenv("VAULT_SKIP_VERIFY", tt.envValue)
+				_ = os.Setenv("VAULT_SKIP_VERIFY", tt.envValue)
 			} else {
-				os.Unsetenv("VAULT_SKIP_VERIFY")
+				_ = os.Unsetenv("VAULT_SKIP_VERIFY")
 			}
 
 			// Reset and reconfigure Viper to pick up the new environment variable

@@ -15,14 +15,13 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid pki config",
 			config: Config{
-				VaultAddr:        "http://127.0.0.1:8200",
-				VaultToken:       "root",
-				Mode:             "pki",
-				Workers:          4,
-				Namespaces:       5,
-				CreateNamespaces: true,
-				PKILeases:        100,
-				PKIKeySize:       2048,
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
+				Mode:       "pki",
+				Workers:    4,
+				Namespaces: 5,
+				PKILeases:  100,
+				PKIKeySize: 2048,
 			},
 			wantErr: false,
 		},
@@ -47,12 +46,11 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "workers too high",
 			config: Config{
-				VaultAddr:        "http://127.0.0.1:8200",
-				VaultToken:       "root",
-				Mode:             "pki",
-				Workers:          150,
-				Namespaces:       5,
-				CreateNamespaces: true,
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
+				Mode:       "pki",
+				Workers:    150,
+				Namespaces: 5,
 			},
 			wantErr: true,
 			errMsg:  "workers must be between 1 and 32",
@@ -60,12 +58,11 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "workers too low",
 			config: Config{
-				VaultAddr:        "http://127.0.0.1:8200",
-				VaultToken:       "root",
-				Mode:             "pki",
-				Workers:          0,
-				Namespaces:       5,
-				CreateNamespaces: true,
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
+				Mode:       "pki",
+				Workers:    0,
+				Namespaces: 5,
 			},
 			wantErr: true,
 			errMsg:  "workers must be between 1 and 32",
@@ -73,12 +70,11 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "namespaces too high",
 			config: Config{
-				VaultAddr:        "http://127.0.0.1:8200",
-				VaultToken:       "root",
-				Mode:             "pki",
-				Workers:          4,
-				Namespaces:       1500,
-				CreateNamespaces: true,
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
+				Mode:       "pki",
+				Workers:    4,
+				Namespaces: 1500,
 			},
 			wantErr: true,
 			errMsg:  "namespaces must be between 0 and 1000",
@@ -86,14 +82,13 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "pki invalid key size",
 			config: Config{
-				VaultAddr:        "http://127.0.0.1:8200",
-				VaultToken:       "root",
-				Mode:             "pki",
-				Workers:          4,
-				Namespaces:       5,
-				CreateNamespaces: true,
-				PKILeases:        100,
-				PKIKeySize:       1024,
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
+				Mode:       "pki",
+				Workers:    4,
+				Namespaces: 5,
+				PKILeases:  100,
+				PKIKeySize: 1024,
 			},
 			wantErr: true,
 			errMsg:  "pki-key-size must be 2048 or 4096",
@@ -101,13 +96,12 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "pki missing leases",
 			config: Config{
-				VaultAddr:        "http://127.0.0.1:8200",
-				VaultToken:       "root",
-				Mode:             "pki",
-				Workers:          4,
-				Namespaces:       5,
-				CreateNamespaces: true,
-				PKILeases:        0,
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
+				Mode:       "pki",
+				Workers:    4,
+				Namespaces: 5,
+				PKILeases:  0,
 			},
 			wantErr: true,
 			errMsg:  "pki-leases must be >= 1",
@@ -115,26 +109,24 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid approle config",
 			config: Config{
-				VaultAddr:        "http://127.0.0.1:8200",
-				VaultToken:       "root",
-				Mode:             "approle",
-				Workers:          4,
-				Namespaces:       5,
-				CreateNamespaces: true,
-				AppRoleLogins:    100,
+				VaultAddr:     "http://127.0.0.1:8200",
+				VaultToken:    "root",
+				Mode:          "approle",
+				Workers:       4,
+				Namespaces:    5,
+				AppRoleLogins: 100,
 			},
 			wantErr: false,
 		},
 		{
 			name: "approle missing logins",
 			config: Config{
-				VaultAddr:        "http://127.0.0.1:8200",
-				VaultToken:       "root",
-				Mode:             "approle",
-				Workers:          4,
-				Namespaces:       5,
-				CreateNamespaces: true,
-				AppRoleLogins:    0,
+				VaultAddr:     "http://127.0.0.1:8200",
+				VaultToken:    "root",
+				Mode:          "approle",
+				Workers:       4,
+				Namespaces:    5,
+				AppRoleLogins: 0,
 			},
 			wantErr: true,
 			errMsg:  "approle-logins must be >= 1",
@@ -147,7 +139,6 @@ func TestConfig_Validate(t *testing.T) {
 				Mode:             "kv",
 				Workers:          4,
 				Namespaces:       5,
-				CreateNamespaces: true,
 				SecretsPerEngine: 100,
 			},
 			wantErr: false,
@@ -160,7 +151,6 @@ func TestConfig_Validate(t *testing.T) {
 				Mode:             "kv",
 				Workers:          4,
 				Namespaces:       5,
-				CreateNamespaces: true,
 				SecretsPerEngine: 0,
 			},
 			wantErr: true,
@@ -185,10 +175,6 @@ func TestConfig_Validate(t *testing.T) {
 func TestNewDefault_VaultOSSCompatible(t *testing.T) {
 	cfg := NewDefault()
 
-	if cfg.CreateNamespaces != false {
-		t.Errorf("expected CreateNamespaces=false for Vault OSS compatibility, got %v", cfg.CreateNamespaces)
-	}
-
 	if cfg.Namespaces != 0 {
 		t.Errorf("expected Namespaces=0 for single-namespace mode, got %d", cfg.Namespaces)
 	}
@@ -205,67 +191,52 @@ func TestNewDefault_VaultOSSCompatible(t *testing.T) {
 
 func TestValidate_NamespaceMode(t *testing.T) {
 	tests := []struct {
-		name               string
-		namespaces         int
-		createNamespaces   bool
-		expectedNamespaces int
-		expectedCreate     bool
+		name       string
+		namespaces int
+		wantErr    bool
 	}{
 		{
-			name:               "default (single-namespace mode)",
-			namespaces:         0,
-			createNamespaces:   false,
-			expectedNamespaces: 0,
-			expectedCreate:     false,
+			name:       "single-namespace mode",
+			namespaces: 0,
+			wantErr:    false,
 		},
 		{
-			name:               "explicit multi-namespace",
-			namespaces:         10,
-			createNamespaces:   true,
-			expectedNamespaces: 10,
-			expectedCreate:     true,
+			name:       "multi-namespace mode",
+			namespaces: 10,
+			wantErr:    false,
 		},
 		{
-			name:               "conflicting config (namespaces>0 but create=false)",
-			namespaces:         5,
-			createNamespaces:   false,
-			expectedNamespaces: 0, // Gets reset to 0
-			expectedCreate:     false,
+			name:       "max namespaces",
+			namespaces: 1000,
+			wantErr:    false,
 		},
 		{
-			name:               "namespaces=0 forces create=false",
-			namespaces:         0,
-			createNamespaces:   true, // Will be forced to false
-			expectedNamespaces: 0,
-			expectedCreate:     false,
+			name:       "negative namespaces invalid",
+			namespaces: -1,
+			wantErr:    true,
+		},
+		{
+			name:       "over max namespaces invalid",
+			namespaces: 1001,
+			wantErr:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := &Config{
-				VaultAddr:        "http://127.0.0.1:8200",
-				VaultToken:       "root",
-				Mode:             "pki",
-				Workers:          4,
-				Namespaces:       tt.namespaces,
-				CreateNamespaces: tt.createNamespaces,
-				PKILeases:        100,
-				PKIKeySize:       2048,
+				VaultAddr:  "http://127.0.0.1:8200",
+				VaultToken: "root",
+				Mode:       "pki",
+				Workers:    4,
+				Namespaces: tt.namespaces,
+				PKILeases:  100,
+				PKIKeySize: 2048,
 			}
 
 			err := cfg.Validate()
-			if err != nil {
-				t.Errorf("Validate() unexpected error = %v", err)
-				return
-			}
-
-			if cfg.Namespaces != tt.expectedNamespaces {
-				t.Errorf("expected Namespaces=%d, got %d", tt.expectedNamespaces, cfg.Namespaces)
-			}
-
-			if cfg.CreateNamespaces != tt.expectedCreate {
-				t.Errorf("expected CreateNamespaces=%v, got %v", tt.expectedCreate, cfg.CreateNamespaces)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

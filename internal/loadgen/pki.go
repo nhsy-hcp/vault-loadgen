@@ -38,7 +38,7 @@ func NewPKIWorker(wcfg *WorkerConfig) *PKIWorker {
 
 // Setup prepares the PKI engine in the given namespace.
 func (w *PKIWorker) Setup(ctx context.Context, namespace string) error {
-	return setupPKIEngine(ctx, w.client, namespace, w.cfg.PKITTL, w.cfg.PKIRootCATTL)
+	return setupPKIEngine(ctx, w.client, namespace, w.cfg.PKITTL, w.cfg.PKIRootCATTL, w.stats)
 }
 
 // Execute generates a single certificate lease.
@@ -138,7 +138,7 @@ func GeneratePKILoad(ctx context.Context, cfg *config.Config) (*stats.Stats, err
 }
 
 // setupPKIEngine enables and configures a PKI secrets engine in the given namespace
-func setupPKIEngine(ctx context.Context, vaultClient *api.Client, namespace string, certTTL string, rootCATTL string) error {
+func setupPKIEngine(ctx context.Context, vaultClient *api.Client, namespace string, certTTL string, rootCATTL string, st *stats.Stats) error {
 	// Create a client for this namespace
 	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
@@ -160,10 +160,15 @@ func setupPKIEngine(ctx context.Context, vaultClient *api.Client, namespace stri
 		// Check if already mounted
 		if strings.Contains(err.Error(), "path is already in use") {
 			slog.Debug("pki engine already mounted", "namespace", namespace, "path", pkiPath)
+			st.IncPKIEnginesSkipped()
+			return nil // Skip CA generation if already mounted
 		} else {
+			st.IncPKIEnginesFailed()
 			return fmt.Errorf("failed to mount pki engine: %w", err)
 		}
 	}
+
+	st.IncPKIEnginesEnabled()
 
 	// Generate root CA with configurable TTL (default: 7 days as per requirements)
 	// CA TTL should be longer than the certificate TTLs it will sign

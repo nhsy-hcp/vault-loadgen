@@ -100,7 +100,8 @@ func TestSetupKVEngine_MockedResponses(t *testing.T) {
 
 			// Test setupKVEngine
 			ctx := context.Background()
-			err = setupKVEngine(ctx, vaultClient, tt.namespace, tt.engineName)
+			st := stats.New()
+			err = setupKVEngine(ctx, vaultClient, tt.namespace, tt.engineName, st)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("setupKVEngine() error = %v, wantErr %v", err, tt.wantErr)
@@ -282,7 +283,6 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 				KVEngines:        1,
 				SecretSize:       3,
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -332,7 +332,6 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 				KVEngines:        3,
 				SecretSize:       2,
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -383,7 +382,6 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 				KVEngines:        1,
 				SecretSize:       2,
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -432,7 +430,6 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 				KVEngines:        1,
 				SecretSize:       3,
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -461,7 +458,6 @@ func TestGenerateKVLoad_MockedEndToEnd(t *testing.T) {
 				KVEngines:        1,
 				SecretSize:       3,
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -555,7 +551,6 @@ func TestGenerateKVLoad_ContextCancellation(t *testing.T) {
 		KVEngines:        3,
 		SecretSize:       5,
 		Workers:          2,
-		CreateNamespaces: false,
 		ParentNamespace:  "",
 	}
 

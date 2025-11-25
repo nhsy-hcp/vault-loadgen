@@ -148,7 +148,7 @@ func ValidateNamespace(ctx context.Context, client *api.Client, namespace string
 // getNamespaces returns the list of namespaces that will be used
 // Helper function to calculate expected resources
 func getNamespaces(cfg *config.Config) []string {
-	if cfg.CreateNamespaces && cfg.Namespaces > 0 {
+	if cfg.Namespaces > 0 {
 		// Multi-namespace mode
 		return make([]string, cfg.Namespaces)
 	}

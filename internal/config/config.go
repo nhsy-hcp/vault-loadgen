@@ -25,14 +25,13 @@ type Config struct {
 	ConfigFile string
 
 	// Global settings
-	Workers          int
-	Namespaces       int
-	CreateNamespaces bool
-	LogLevel         string
-	RateLimit        float64
-	DryRun           bool
-	Output           string
-	Progress         bool
+	Workers    int
+	Namespaces int
+	LogLevel   string
+	RateLimit  float64
+	DryRun     bool
+	Output     string
+	Progress   bool
 
 	// Mode
 	Mode string
@@ -78,12 +77,9 @@ func (c *Config) Validate() error {
 
 	// Namespace mode validation
 	if c.Namespaces == 0 {
-		c.CreateNamespaces = false // Automatically disable namespace creation
 		slog.Info("single-namespace mode enabled (namespaces=0)")
-	}
-	if !c.CreateNamespaces && c.Namespaces > 0 {
-		slog.Warn("namespace creation disabled but namespaces > 0, using single-namespace mode")
-		c.Namespaces = 0
+	} else {
+		slog.Info("multi-namespace mode enabled", "namespaces", c.Namespaces)
 	}
 
 	// Mode-specific validation
@@ -121,8 +117,7 @@ func (c *Config) Validate() error {
 func NewDefault() *Config {
 	return &Config{
 		Workers:          4,
-		Namespaces:       0,     // Changed from 5 to 0 for Vault OSS compatibility
-		CreateNamespaces: false, // Changed from true to false for Vault OSS compatibility
+		Namespaces:       0, // 0 = single-namespace mode (Vault OSS compatible)
 		LogLevel:         "info",
 		Output:           "text",
 		Progress:         true,

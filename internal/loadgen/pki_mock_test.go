@@ -165,7 +165,8 @@ func TestSetupPKIEngine_MockedResponses(t *testing.T) {
 
 			// Test setupPKIEngine
 			ctx := context.Background()
-			err = setupPKIEngine(ctx, vaultClient, tt.namespace, tt.certTTL, tt.rootCATTL)
+			st := stats.New()
+			err = setupPKIEngine(ctx, vaultClient, tt.namespace, tt.certTTL, tt.rootCATTL, st)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("setupPKIEngine() error = %v, wantErr %v", err, tt.wantErr)
@@ -327,7 +328,6 @@ func TestGeneratePKILoad_MockedEndToEnd(t *testing.T) {
 				PKIKeySize:       2048,
 				PKICommonName:    "cert-{index}.example.com",
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -390,7 +390,6 @@ func TestGeneratePKILoad_MockedEndToEnd(t *testing.T) {
 				PKIKeySize:       2048,
 				PKICommonName:    "cert-{index}.example.com",
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -452,7 +451,6 @@ func TestGeneratePKILoad_MockedEndToEnd(t *testing.T) {
 				PKIKeySize:       2048,
 				PKICommonName:    "cert-{index}.example.com",
 				Workers:          2,
-				CreateNamespaces: false,
 				ParentNamespace:  "",
 			},
 			mockHandler: func(w http.ResponseWriter, r *http.Request) {
@@ -539,7 +537,6 @@ func TestGeneratePKILoad_ContextCancellation(t *testing.T) {
 		PKIKeySize:       2048,
 		PKICommonName:    "cert-{index}.example.com",
 		Workers:          2,
-		CreateNamespaces: false,
 		ParentNamespace:  "",
 	}
 
