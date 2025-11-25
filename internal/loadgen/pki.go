@@ -12,13 +12,58 @@ import (
 	"strings"
 
 	"github.com/hashicorp/vault/api"
-	"golang.org/x/sync/errgroup"
 
-	"github.com/nhsy/vault-loadgen/internal/client"
 	"github.com/nhsy/vault-loadgen/internal/config"
 	"github.com/nhsy/vault-loadgen/internal/ratelimit"
 	"github.com/nhsy/vault-loadgen/internal/stats"
 )
+
+// PKIWorker implements the Worker interface for PKI certificate generation.
+type PKIWorker struct {
+	client  *api.Client
+	cfg     *config.Config
+	stats   *stats.Stats
+	limiter *ratelimit.Limiter
+}
+
+// NewPKIWorker creates a new PKI worker.
+func NewPKIWorker(wcfg *WorkerConfig) *PKIWorker {
+	return &PKIWorker{
+		client:  wcfg.VaultClient,
+		cfg:     wcfg.Config,
+		stats:   wcfg.Stats,
+		limiter: wcfg.RateLimiter,
+	}
+}
+
+// Setup prepares the PKI engine in the given namespace.
+func (w *PKIWorker) Setup(ctx context.Context, namespace string) error {
+	return setupPKIEngine(ctx, w.client, namespace, w.cfg.PKITTL, w.cfg.PKIRootCATTL)
+}
+
+// Execute generates a single certificate lease.
+func (w *PKIWorker) Execute(ctx context.Context, namespace string, workIndex int) error {
+	commonName := formatCommonName(w.cfg.PKICommonName, workIndex)
+
+	if err := generateCertificateLease(ctx, w.client, namespace, commonName, w.cfg.PKIKeySize); err != nil {
+		slog.Warn("failed to generate certificate", "namespace", namespace, "cn", commonName, "error", err)
+		w.stats.IncLeasesFailed()
+		return nil // Don't stop other workers
+	}
+
+	w.stats.IncLeasesCreated()
+	return nil
+}
+
+// Cleanup performs any necessary cleanup (currently none needed for PKI).
+func (w *PKIWorker) Cleanup(ctx context.Context, namespace string) error {
+	return nil
+}
+
+// GetStats returns the worker's statistics.
+func (w *PKIWorker) GetStats() *stats.Stats {
+	return w.stats
+}
 
 // GeneratePKILoad generates PKI certificate leases for load testing
 // Works in both multi-namespace mode (distributes across namespaces) and single-namespace mode
@@ -28,63 +73,20 @@ func GeneratePKILoad(ctx context.Context, cfg *config.Config) (*stats.Stats, err
 		return nil, fmt.Errorf("pki-leases must be at least 1, got %d", cfg.PKILeases)
 	}
 
-	// Create Vault client
-	vaultClient, err := client.NewClient(cfg)
+	// Initialize client
+	vaultClient, err := InitializeClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create vault client: %w", err)
+		return nil, err
 	}
 
-	// Validate connection
-	if err := client.ValidateConnection(vaultClient); err != nil {
-		return nil, fmt.Errorf("connection validation failed: %w", err)
-	}
-
-	// Validate authentication
-	if err := client.ValidateAuth(vaultClient); err != nil {
-		return nil, fmt.Errorf("authentication validation failed: %w", err)
-	}
-
+	// Initialize stats
 	st := stats.New()
 
-	// Determine namespaces to use
-	var namespaces []string
-	if cfg.CreateNamespaces && cfg.Namespaces > 0 {
-		// Multi-namespace mode: create child namespaces
-		slog.Info("pki mode: creating child namespaces", "count", cfg.Namespaces)
-		createdNamespaces, err := CreateNamespaces(ctx, cfg)
-		if err != nil {
-			return st, fmt.Errorf("failed to create namespaces: %w", err)
-		}
-		namespaces = createdNamespaces
-	} else {
-		// Single-namespace mode: use parent namespace or root
-		slog.Info("pki mode: using single-namespace mode", "namespace", cfg.ParentNamespace)
-		namespaces = []string{cfg.ParentNamespace}
+	// Determine namespaces
+	namespaces, err := DetermineNamespaces(ctx, cfg)
+	if err != nil {
+		return st, err
 	}
-
-	slog.Info("pki mode: setting up PKI engines", "namespaces", len(namespaces))
-
-	// Setup PKI engines in each namespace
-	for _, ns := range namespaces {
-		if err := ctx.Err(); err != nil {
-			return st, err
-		}
-
-		if err := setupPKIEngine(ctx, vaultClient, ns, cfg.PKITTL, cfg.PKIRootCATTL); err != nil {
-			slog.Error("failed to setup PKI engine", "namespace", ns, "error", err)
-			return st, fmt.Errorf("failed to setup PKI engine in namespace %q: %w", ns, err)
-		}
-		slog.Debug("pki engine setup complete", "namespace", ns)
-	}
-
-	// Calculate leases per namespace
-	leasesPerNamespace := cfg.PKILeases / len(namespaces)
-	remainder := cfg.PKILeases % len(namespaces)
-
-	slog.Info("pki mode: generating certificate leases",
-		"total_leases", cfg.PKILeases,
-		"namespaces", len(namespaces),
-		"leases_per_namespace", leasesPerNamespace)
 
 	// Create rate limiter
 	limiter := ratelimit.New(cfg.RateLimit)
@@ -92,48 +94,34 @@ func GeneratePKILoad(ctx context.Context, cfg *config.Config) (*stats.Stats, err
 		slog.Info("rate limiting enabled", "ops_per_second", cfg.RateLimit)
 	}
 
-	// Generate certificates using worker pool
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(cfg.Workers)
+	// Create worker
+	worker := NewPKIWorker(&WorkerConfig{
+		VaultClient: vaultClient,
+		Config:      cfg,
+		RateLimiter: limiter,
+		Stats:       st,
+	})
 
-	leaseIndex := 0
-	for nsIndex, ns := range namespaces {
-		// Calculate leases for this namespace
-		leasesForNS := leasesPerNamespace
-		if nsIndex < remainder {
-			leasesForNS++ // Distribute remainder across first namespaces
+	// Setup PKI engines in each namespace
+	slog.Info("pki mode: setting up PKI engines", "namespaces", len(namespaces))
+	for _, ns := range namespaces {
+		if err := ctx.Err(); err != nil {
+			return st, err
 		}
 
-		// Generate certificates for this namespace
-		for i := 0; i < leasesForNS; i++ {
-			ns := ns // Capture for goroutine
-			leaseIndex++
-			commonName := formatCommonName(cfg.PKICommonName, leaseIndex)
-
-			g.Go(func() error {
-				// Wait for rate limiter
-				if err := limiter.Wait(ctx); err != nil {
-					return err
-				}
-
-				if err := ctx.Err(); err != nil {
-					return err
-				}
-
-				if err := generateCertificateLease(ctx, vaultClient, ns, commonName, cfg.PKIKeySize); err != nil {
-					slog.Warn("failed to generate certificate", "namespace", ns, "cn", commonName, "error", err)
-					st.IncLeasesFailed()
-					return nil // Don't stop other workers
-				}
-
-				st.IncLeasesCreated()
-				return nil
-			})
+		if err := worker.Setup(ctx, ns); err != nil {
+			slog.Error("failed to setup PKI engine", "namespace", ns, "error", err)
+			return st, fmt.Errorf("failed to setup PKI engine in namespace %q: %w", ns, err)
 		}
+		slog.Debug("pki engine setup complete", "namespace", ns)
 	}
 
-	// Wait for all workers
-	if err := g.Wait(); err != nil {
+	// Generate certificates using worker pool
+	slog.Info("pki mode: generating certificate leases",
+		"total_leases", cfg.PKILeases,
+		"namespaces", len(namespaces))
+
+	if err := RunWorkerPool(ctx, worker, namespaces, cfg.PKILeases, cfg.Workers, limiter); err != nil {
 		return st, err
 	}
 
@@ -152,13 +140,9 @@ func GeneratePKILoad(ctx context.Context, cfg *config.Config) (*stats.Stats, err
 // setupPKIEngine enables and configures a PKI secrets engine in the given namespace
 func setupPKIEngine(ctx context.Context, vaultClient *api.Client, namespace string, certTTL string, rootCATTL string) error {
 	// Create a client for this namespace
-	nsClient, err := vaultClient.Clone()
+	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to clone client: %w", err)
-	}
-
-	if namespace != "" {
-		nsClient.SetNamespace(namespace)
+		return err
 	}
 
 	// Enable PKI secrets engine
@@ -219,13 +203,9 @@ func generateCertificateLease(ctx context.Context, vaultClient *api.Client, name
 	}
 
 	// Create a client for this namespace
-	nsClient, err := vaultClient.Clone()
+	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to clone client: %w", err)
-	}
-
-	if namespace != "" {
-		nsClient.SetNamespace(namespace)
+		return err
 	}
 
 	// Sign the certificate

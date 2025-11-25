@@ -9,6 +9,8 @@ vars:
 env:
   CGO_ENABLED: 0
   GOFLAGS: -buildvcs=false
+  VAULT_ADDR: '{{.VAULT_ADDR | default "http://127.0.0.1:8200"}}'
+  VAULT_TOKEN: '{{.VAULT_TOKEN | default "root"}}'
 
 tasks:
   default:
@@ -277,3 +279,10 @@ tasks:
     cmds:
       - go mod tidy
       - go mod verify
+
+  ui:
+    desc: Start the Vault UI
+    cmds:
+      - open $VAULT_ADDR
+      - echo root | pbcopy
+      - echo "Vault UI opened in browser. Root token copied to clipboard."

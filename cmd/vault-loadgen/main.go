@@ -109,8 +109,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfg.ParentNamespace, "parent-namespace", "", "Parent namespace for load test resources")
 
 	rootCmd.PersistentFlags().IntVar(&cfg.Workers, "workers", 4, "Number of concurrent workers")
-	rootCmd.PersistentFlags().IntVar(&cfg.Namespaces, "namespaces", 5, "Number of child namespaces to create (0 = single-namespace mode)")
-	rootCmd.PersistentFlags().BoolVar(&cfg.CreateNamespaces, "create-namespaces", true, "Create child namespaces for load distribution")
+	rootCmd.PersistentFlags().IntVar(&cfg.Namespaces, "namespaces", 0, "Number of child namespaces to create (0 = single-namespace mode)")
+	rootCmd.PersistentFlags().BoolVar(&cfg.CreateNamespaces, "create-namespaces", false, "Create child namespaces for load distribution")
 	rootCmd.PersistentFlags().StringVar(&cfg.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
 	rootCmd.PersistentFlags().Float64Var(&cfg.RateLimit, "rate-limit", 0, "Rate limit (operations per second, 0 = unlimited)")
 	rootCmd.PersistentFlags().BoolVar(&cfg.DryRun, "dry-run", false, "Perform a dry run without making changes")

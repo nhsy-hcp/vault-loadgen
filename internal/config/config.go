@@ -121,8 +121,8 @@ func (c *Config) Validate() error {
 func NewDefault() *Config {
 	return &Config{
 		Workers:          4,
-		Namespaces:       5,
-		CreateNamespaces: true,
+		Namespaces:       0,     // Changed from 5 to 0 for Vault OSS compatibility
+		CreateNamespaces: false, // Changed from true to false for Vault OSS compatibility
 		LogLevel:         "info",
 		Output:           "text",
 		Progress:         true,

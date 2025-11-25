@@ -7,15 +7,98 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/vault/api"
-	"golang.org/x/sync/errgroup"
 
-	"github.com/nhsy/vault-loadgen/internal/client"
 	"github.com/nhsy/vault-loadgen/internal/config"
 	"github.com/nhsy/vault-loadgen/internal/ratelimit"
 	"github.com/nhsy/vault-loadgen/internal/stats"
 )
+
+// KVWorker implements the Worker interface for KV secret writes.
+type KVWorker struct {
+	client  *api.Client
+	cfg     *config.Config
+	stats   *stats.Stats
+	limiter *ratelimit.Limiter
+	engines map[string][]string // namespace -> engine names
+	mu      sync.RWMutex
+}
+
+// NewKVWorker creates a new KV worker.
+func NewKVWorker(wcfg *WorkerConfig) *KVWorker {
+	return &KVWorker{
+		client:  wcfg.VaultClient,
+		cfg:     wcfg.Config,
+		stats:   wcfg.Stats,
+		limiter: wcfg.RateLimiter,
+		engines: make(map[string][]string),
+	}
+}
+
+// Setup prepares the KV engines in the given namespace.
+func (w *KVWorker) Setup(ctx context.Context, namespace string) error {
+	engineNames := make([]string, 0, w.cfg.KVEngines)
+
+	for engineIndex := 0; engineIndex < w.cfg.KVEngines; engineIndex++ {
+		engineName := fmt.Sprintf("secret-%d", engineIndex)
+
+		if err := setupKVEngine(ctx, w.client, namespace, engineName); err != nil {
+			return fmt.Errorf("failed to setup KV engine %q: %w", engineName, err)
+		}
+
+		engineNames = append(engineNames, engineName)
+		slog.Debug("kv engine setup complete", "namespace", namespace, "engine", engineName)
+	}
+
+	// Store engine names for this namespace
+	w.mu.Lock()
+	w.engines[namespace] = engineNames
+	w.mu.Unlock()
+
+	return nil
+}
+
+// Execute writes a single secret to a KV engine.
+func (w *KVWorker) Execute(ctx context.Context, namespace string, workIndex int) error {
+	// Get engine names for this namespace
+	w.mu.RLock()
+	engineNames := w.engines[namespace]
+	w.mu.RUnlock()
+
+	if len(engineNames) == 0 {
+		w.stats.IncSecretsFailed()
+		return fmt.Errorf("no engines found for namespace %q", namespace)
+	}
+
+	// Distribute secrets across engines
+	engineIndex := workIndex % len(engineNames)
+	engineName := engineNames[engineIndex]
+	secretName := fmt.Sprintf("loadtest-%d", workIndex)
+
+	// Generate random secret data
+	secretData := generateRandomSecret(w.cfg.SecretSize)
+
+	if err := writeSecret(ctx, w.client, namespace, engineName, secretName, secretData); err != nil {
+		slog.Warn("failed to write secret", "namespace", namespace, "engine", engineName, "secret", secretName, "error", err)
+		w.stats.IncSecretsFailed()
+		return nil // Don't stop other workers
+	}
+
+	w.stats.IncSecretsCreated()
+	return nil
+}
+
+// Cleanup performs any necessary cleanup (currently none needed for KV).
+func (w *KVWorker) Cleanup(ctx context.Context, namespace string) error {
+	return nil
+}
+
+// GetStats returns the worker's statistics.
+func (w *KVWorker) GetStats() *stats.Stats {
+	return w.stats
+}
 
 // GenerateKVLoad generates KV v2 secrets for load testing
 // Works in both multi-namespace mode (distributes across namespaces) and single-namespace mode
@@ -28,67 +111,20 @@ func GenerateKVLoad(ctx context.Context, cfg *config.Config) (*stats.Stats, erro
 		return nil, fmt.Errorf("kv-engines must be at least 1, got %d", cfg.KVEngines)
 	}
 
-	// Create Vault client
-	vaultClient, err := client.NewClient(cfg)
+	// Initialize client
+	vaultClient, err := InitializeClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create vault client: %w", err)
+		return nil, err
 	}
 
-	// Validate connection
-	if err := client.ValidateConnection(vaultClient); err != nil {
-		return nil, fmt.Errorf("connection validation failed: %w", err)
-	}
-
-	// Validate authentication
-	if err := client.ValidateAuth(vaultClient); err != nil {
-		return nil, fmt.Errorf("authentication validation failed: %w", err)
-	}
-
+	// Initialize stats
 	st := stats.New()
 
-	// Determine namespaces to use
-	var namespaces []string
-	if cfg.CreateNamespaces && cfg.Namespaces > 0 {
-		// Multi-namespace mode: create child namespaces
-		slog.Info("kv mode: creating child namespaces", "count", cfg.Namespaces)
-		createdNamespaces, err := CreateNamespaces(ctx, cfg)
-		if err != nil {
-			return st, fmt.Errorf("failed to create namespaces: %w", err)
-		}
-		namespaces = createdNamespaces
-	} else {
-		// Single-namespace mode: use parent namespace or root
-		slog.Info("kv mode: using single-namespace mode", "namespace", cfg.ParentNamespace)
-		namespaces = []string{cfg.ParentNamespace}
+	// Determine namespaces
+	namespaces, err := DetermineNamespaces(ctx, cfg)
+	if err != nil {
+		return st, err
 	}
-
-	slog.Info("kv mode: setting up KV v2 engines", "namespaces", len(namespaces), "engines_per_namespace", cfg.KVEngines)
-
-	// Setup KV v2 engines in each namespace
-	for _, ns := range namespaces {
-		if err := ctx.Err(); err != nil {
-			return st, err
-		}
-
-		for engineIndex := 0; engineIndex < cfg.KVEngines; engineIndex++ {
-			engineName := fmt.Sprintf("secret-%d", engineIndex)
-
-			if err := setupKVEngine(ctx, vaultClient, ns, engineName); err != nil {
-				slog.Error("failed to setup KV engine", "namespace", ns, "engine", engineName, "error", err)
-				return st, fmt.Errorf("failed to setup KV engine %q in namespace %q: %w", engineName, ns, err)
-			}
-			slog.Debug("kv engine setup complete", "namespace", ns, "engine", engineName)
-		}
-	}
-
-	// Calculate total secrets to write
-	totalSecrets := len(namespaces) * cfg.KVEngines * cfg.SecretsPerEngine
-
-	slog.Info("kv mode: writing secrets",
-		"total_secrets", totalSecrets,
-		"namespaces", len(namespaces),
-		"engines_per_namespace", cfg.KVEngines,
-		"secrets_per_engine", cfg.SecretsPerEngine)
 
 	// Create rate limiter
 	limiter := ratelimit.New(cfg.RateLimit)
@@ -96,50 +132,38 @@ func GenerateKVLoad(ctx context.Context, cfg *config.Config) (*stats.Stats, erro
 		slog.Info("rate limiting enabled", "ops_per_second", cfg.RateLimit)
 	}
 
-	// Write secrets using worker pool
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(cfg.Workers)
+	// Create worker
+	worker := NewKVWorker(&WorkerConfig{
+		VaultClient: vaultClient,
+		Config:      cfg,
+		RateLimiter: limiter,
+		Stats:       st,
+	})
 
-	secretIndex := 0
+	// Setup KV engines in each namespace
+	slog.Info("kv mode: setting up KV v2 engines", "namespaces", len(namespaces), "engines_per_namespace", cfg.KVEngines)
 	for _, ns := range namespaces {
-		for engineIndex := 0; engineIndex < cfg.KVEngines; engineIndex++ {
-			engineName := fmt.Sprintf("secret-%d", engineIndex)
+		if err := ctx.Err(); err != nil {
+			return st, err
+		}
 
-			// Write secrets for this engine
-			for i := 0; i < cfg.SecretsPerEngine; i++ {
-				ns := ns                 // Capture for goroutine
-				engineName := engineName // Capture for goroutine
-				secretIndex++
-				secretName := fmt.Sprintf("loadtest-%d", secretIndex)
-
-				g.Go(func() error {
-					// Wait for rate limiter
-					if err := limiter.Wait(ctx); err != nil {
-						return err
-					}
-
-					if err := ctx.Err(); err != nil {
-						return err
-					}
-
-					// Generate random secret data
-					secretData := generateRandomSecret(cfg.SecretSize)
-
-					if err := writeSecret(ctx, vaultClient, ns, engineName, secretName, secretData); err != nil {
-						slog.Warn("failed to write secret", "namespace", ns, "engine", engineName, "secret", secretName, "error", err)
-						st.IncSecretsFailed()
-						return nil // Don't stop other workers
-					}
-
-					st.IncSecretsCreated()
-					return nil
-				})
-			}
+		if err := worker.Setup(ctx, ns); err != nil {
+			slog.Error("failed to setup KV engine", "namespace", ns, "error", err)
+			return st, fmt.Errorf("failed to setup KV engine in namespace %q: %w", ns, err)
 		}
 	}
 
-	// Wait for all workers
-	if err := g.Wait(); err != nil {
+	// Calculate total secrets to write
+	totalSecrets := len(namespaces) * cfg.KVEngines * cfg.SecretsPerEngine
+
+	// Write secrets using worker pool
+	slog.Info("kv mode: writing secrets",
+		"total_secrets", totalSecrets,
+		"namespaces", len(namespaces),
+		"engines_per_namespace", cfg.KVEngines,
+		"secrets_per_engine", cfg.SecretsPerEngine)
+
+	if err := RunWorkerPool(ctx, worker, namespaces, totalSecrets, cfg.Workers, limiter); err != nil {
 		return st, err
 	}
 
@@ -158,13 +182,9 @@ func GenerateKVLoad(ctx context.Context, cfg *config.Config) (*stats.Stats, erro
 // setupKVEngine enables and configures a KV v2 secrets engine in the given namespace
 func setupKVEngine(ctx context.Context, vaultClient *api.Client, namespace string, engineName string) error {
 	// Create a client for this namespace
-	nsClient, err := vaultClient.Clone()
+	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to clone client: %w", err)
-	}
-
-	if namespace != "" {
-		nsClient.SetNamespace(namespace)
+		return err
 	}
 
 	// Enable KV v2 secrets engine
@@ -214,13 +234,9 @@ func generateRandomString(length int) string {
 // writeSecret writes a secret to a KV v2 engine
 func writeSecret(ctx context.Context, vaultClient *api.Client, namespace string, engineName string, secretName string, data map[string]interface{}) error {
 	// Create a client for this namespace
-	nsClient, err := vaultClient.Clone()
+	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to clone client: %w", err)
-	}
-
-	if namespace != "" {
-		nsClient.SetNamespace(namespace)
+		return err
 	}
 
 	// KV v2 requires writing to "data" subpath

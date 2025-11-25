@@ -5,16 +5,66 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/vault/api"
-	"golang.org/x/sync/errgroup"
 
-	"github.com/nhsy/vault-loadgen/internal/client"
 	"github.com/nhsy/vault-loadgen/internal/config"
 	"github.com/nhsy/vault-loadgen/internal/ratelimit"
 	"github.com/nhsy/vault-loadgen/internal/stats"
 )
+
+// AppRoleWorker implements the Worker interface for AppRole authentication.
+type AppRoleWorker struct {
+	client      *api.Client
+	cfg         *config.Config
+	stats       *stats.Stats
+	limiter     *ratelimit.Limiter
+	roleCounter atomic.Int64 // for unique role naming
+}
+
+// NewAppRoleWorker creates a new AppRole worker.
+func NewAppRoleWorker(wcfg *WorkerConfig) *AppRoleWorker {
+	return &AppRoleWorker{
+		client:  wcfg.VaultClient,
+		cfg:     wcfg.Config,
+		stats:   wcfg.Stats,
+		limiter: wcfg.RateLimiter,
+	}
+}
+
+// Setup prepares the AppRole auth method and KV engine in the given namespace.
+func (w *AppRoleWorker) Setup(ctx context.Context, namespace string) error {
+	if err := setupAppRoleAuth(ctx, w.client, namespace, w.cfg); err != nil {
+		return err
+	}
+	return setupAppRoleKVEngine(ctx, w.client, namespace)
+}
+
+// Execute performs a single AppRole login and authenticated read.
+func (w *AppRoleWorker) Execute(ctx context.Context, namespace string, workIndex int) error {
+	roleName := fmt.Sprintf("loadtest-%d", workIndex)
+
+	if err := generateAppRoleLogin(ctx, w.client, namespace, roleName, w.cfg, w.stats); err != nil {
+		slog.Warn("failed to generate AppRole login", "namespace", namespace, "role", roleName, "error", err)
+		w.stats.IncLeasesFailed()
+		return nil // Don't stop other workers
+	}
+
+	w.stats.IncLeasesCreated()
+	return nil
+}
+
+// Cleanup performs any necessary cleanup (currently none needed for AppRole).
+func (w *AppRoleWorker) Cleanup(ctx context.Context, namespace string) error {
+	return nil
+}
+
+// GetStats returns the worker's statistics.
+func (w *AppRoleWorker) GetStats() *stats.Stats {
+	return w.stats
+}
 
 // GenerateAppRoleLoad generates AppRole authentication token leases for load testing
 // Works in both multi-namespace mode (distributes across namespaces) and single-namespace mode
@@ -24,69 +74,20 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 		return nil, fmt.Errorf("approle-logins must be at least 1, got %d", cfg.AppRoleLogins)
 	}
 
-	// Create Vault client
-	vaultClient, err := client.NewClient(cfg)
+	// Initialize client
+	vaultClient, err := InitializeClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create vault client: %w", err)
+		return nil, err
 	}
 
-	// Validate connection
-	if err := client.ValidateConnection(vaultClient); err != nil {
-		return nil, fmt.Errorf("connection validation failed: %w", err)
-	}
-
-	// Validate authentication
-	if err := client.ValidateAuth(vaultClient); err != nil {
-		return nil, fmt.Errorf("authentication validation failed: %w", err)
-	}
-
+	// Initialize stats
 	st := stats.New()
 
-	// Determine namespaces to use
-	var namespaces []string
-	if cfg.CreateNamespaces && cfg.Namespaces > 0 {
-		// Multi-namespace mode: create child namespaces
-		slog.Info("approle mode: creating child namespaces", "count", cfg.Namespaces)
-		createdNamespaces, err := CreateNamespaces(ctx, cfg)
-		if err != nil {
-			return st, fmt.Errorf("failed to create namespaces: %w", err)
-		}
-		namespaces = createdNamespaces
-	} else {
-		// Single-namespace mode: use parent namespace or root
-		slog.Info("approle mode: using single-namespace mode", "namespace", cfg.ParentNamespace)
-		namespaces = []string{cfg.ParentNamespace}
+	// Determine namespaces
+	namespaces, err := DetermineNamespaces(ctx, cfg)
+	if err != nil {
+		return st, err
 	}
-
-	slog.Info("approle mode: setting up AppRole auth methods and KV engines", "namespaces", len(namespaces))
-
-	// Setup AppRole auth methods and KV engines in each namespace
-	for _, ns := range namespaces {
-		if err := ctx.Err(); err != nil {
-			return st, err
-		}
-
-		if err := setupAppRoleAuth(ctx, vaultClient, ns, cfg); err != nil {
-			slog.Error("failed to setup AppRole auth", "namespace", ns, "error", err)
-			return st, fmt.Errorf("failed to setup AppRole auth in namespace %q: %w", ns, err)
-		}
-
-		if err := setupAppRoleKVEngine(ctx, vaultClient, ns); err != nil {
-			slog.Error("failed to setup KV engine", "namespace", ns, "error", err)
-			return st, fmt.Errorf("failed to setup KV engine in namespace %q: %w", ns, err)
-		}
-
-		slog.Debug("approle auth and KV engine setup complete", "namespace", ns)
-	}
-
-	// Calculate logins per namespace
-	loginsPerNamespace := cfg.AppRoleLogins / len(namespaces)
-	remainder := cfg.AppRoleLogins % len(namespaces)
-
-	slog.Info("approle mode: generating token leases",
-		"total_logins", cfg.AppRoleLogins,
-		"namespaces", len(namespaces),
-		"logins_per_namespace", loginsPerNamespace)
 
 	// Create rate limiter
 	limiter := ratelimit.New(cfg.RateLimit)
@@ -94,50 +95,34 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 		slog.Info("rate limiting enabled", "ops_per_second", cfg.RateLimit)
 	}
 
-	// Generate token leases using worker pool
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(cfg.Workers)
+	// Create worker
+	worker := NewAppRoleWorker(&WorkerConfig{
+		VaultClient: vaultClient,
+		Config:      cfg,
+		RateLimiter: limiter,
+		Stats:       st,
+	})
 
-	// Global counter for unique role names across all namespaces
-	loginIndex := 0
-
-	for nsIndex, ns := range namespaces {
-		// Calculate logins for this namespace
-		loginsForNS := loginsPerNamespace
-		if nsIndex < remainder {
-			loginsForNS++ // Distribute remainder across first namespaces
+	// Setup AppRole auth and KV engines in each namespace
+	slog.Info("approle mode: setting up AppRole auth methods and KV engines", "namespaces", len(namespaces))
+	for _, ns := range namespaces {
+		if err := ctx.Err(); err != nil {
+			return st, err
 		}
 
-		// Generate logins for this namespace
-		for i := 0; i < loginsForNS; i++ {
-			ns := ns // Capture for goroutine
-			roleName := fmt.Sprintf("loadtest-%d", loginIndex)
-			loginIndex++
-
-			g.Go(func() error {
-				// Wait for rate limiter
-				if err := limiter.Wait(ctx); err != nil {
-					return err
-				}
-
-				if err := ctx.Err(); err != nil {
-					return err
-				}
-
-				if err := generateAppRoleLogin(ctx, vaultClient, ns, roleName, cfg, st); err != nil {
-					slog.Warn("failed to generate AppRole login", "namespace", ns, "role", roleName, "error", err)
-					st.IncLeasesFailed()
-					return nil // Don't stop other workers
-				}
-
-				st.IncLeasesCreated()
-				return nil
-			})
+		if err := worker.Setup(ctx, ns); err != nil {
+			slog.Error("failed to setup AppRole auth", "namespace", ns, "error", err)
+			return st, fmt.Errorf("failed to setup AppRole auth in namespace %q: %w", ns, err)
 		}
+		slog.Debug("approle auth and KV engine setup complete", "namespace", ns)
 	}
 
-	// Wait for all workers
-	if err := g.Wait(); err != nil {
+	// Generate logins using worker pool
+	slog.Info("approle mode: generating token leases",
+		"total_logins", cfg.AppRoleLogins,
+		"namespaces", len(namespaces))
+
+	if err := RunWorkerPool(ctx, worker, namespaces, cfg.AppRoleLogins, cfg.Workers, limiter); err != nil {
 		return st, err
 	}
 
@@ -159,13 +144,9 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 // setupAppRoleAuth enables and configures AppRole auth method in the given namespace
 func setupAppRoleAuth(ctx context.Context, vaultClient *api.Client, namespace string, cfg *config.Config) error {
 	// Create a client for this namespace
-	nsClient, err := vaultClient.Clone()
+	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to clone client: %w", err)
-	}
-
-	if namespace != "" {
-		nsClient.SetNamespace(namespace)
+		return err
 	}
 
 	// Enable AppRole auth method
@@ -205,13 +186,9 @@ path "loadtest-kv/data/dummy" {
 // setupAppRoleKVEngine enables a KV v2 engine and creates a dummy secret for authenticated testing
 func setupAppRoleKVEngine(ctx context.Context, vaultClient *api.Client, namespace string) error {
 	// Create a client for this namespace
-	nsClient, err := vaultClient.Clone()
+	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to clone client: %w", err)
-	}
-
-	if namespace != "" {
-		nsClient.SetNamespace(namespace)
+		return err
 	}
 
 	// Enable KV v2 secrets engine
@@ -253,13 +230,9 @@ func setupAppRoleKVEngine(ctx context.Context, vaultClient *api.Client, namespac
 // createAppRoleRole creates an individual AppRole role with idempotent behavior
 func createAppRoleRole(ctx context.Context, vaultClient *api.Client, namespace string, roleName string, cfg *config.Config) error {
 	// Create a client for this namespace
-	nsClient, err := vaultClient.Clone()
+	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to clone client: %w", err)
-	}
-
-	if namespace != "" {
-		nsClient.SetNamespace(namespace)
+		return err
 	}
 
 	authPath := "approle"
@@ -292,13 +265,9 @@ func createAppRoleRole(ctx context.Context, vaultClient *api.Client, namespace s
 // generateAppRoleLogin generates a token lease by performing an AppRole login
 func generateAppRoleLogin(ctx context.Context, vaultClient *api.Client, namespace string, roleName string, cfg *config.Config, st *stats.Stats) error {
 	// Create a client for this namespace
-	nsClient, err := vaultClient.Clone()
+	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
-		return fmt.Errorf("failed to clone client: %w", err)
-	}
-
-	if namespace != "" {
-		nsClient.SetNamespace(namespace)
+		return err
 	}
 
 	// Create the AppRole role on-demand (idempotent)
@@ -352,17 +321,14 @@ func generateAppRoleLogin(ctx context.Context, vaultClient *api.Client, namespac
 		"lease_duration", loginResp.Auth.LeaseDuration)
 
 	// Perform authenticated read using the newly created token
-	authenticatedClient, err := nsClient.Clone()
+	authenticatedClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
 		st.IncAuthenticatedReadsFailed()
-		return fmt.Errorf("failed to clone client for authenticated read: %w", err)
+		return fmt.Errorf("failed to create client for authenticated read: %w", err)
 	}
 
 	// Set the new token
 	authenticatedClient.SetToken(loginResp.Auth.ClientToken)
-	if namespace != "" {
-		authenticatedClient.SetNamespace(namespace)
-	}
 
 	// Read the dummy secret
 	secretPath := "loadtest-kv/data/dummy"

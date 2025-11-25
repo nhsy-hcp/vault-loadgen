@@ -182,6 +182,95 @@ func TestConfig_Validate(t *testing.T) {
 	}
 }
 
+func TestNewDefault_VaultOSSCompatible(t *testing.T) {
+	cfg := NewDefault()
+
+	if cfg.CreateNamespaces != false {
+		t.Errorf("expected CreateNamespaces=false for Vault OSS compatibility, got %v", cfg.CreateNamespaces)
+	}
+
+	if cfg.Namespaces != 0 {
+		t.Errorf("expected Namespaces=0 for single-namespace mode, got %d", cfg.Namespaces)
+	}
+
+	// Validate should pass with default values
+	cfg.VaultAddr = "http://127.0.0.1:8200"
+	cfg.VaultToken = "root"
+	cfg.Mode = "pki"
+
+	if err := cfg.Validate(); err != nil {
+		t.Errorf("default config should be valid: %v", err)
+	}
+}
+
+func TestValidate_NamespaceMode(t *testing.T) {
+	tests := []struct {
+		name               string
+		namespaces         int
+		createNamespaces   bool
+		expectedNamespaces int
+		expectedCreate     bool
+	}{
+		{
+			name:               "default (single-namespace mode)",
+			namespaces:         0,
+			createNamespaces:   false,
+			expectedNamespaces: 0,
+			expectedCreate:     false,
+		},
+		{
+			name:               "explicit multi-namespace",
+			namespaces:         10,
+			createNamespaces:   true,
+			expectedNamespaces: 10,
+			expectedCreate:     true,
+		},
+		{
+			name:               "conflicting config (namespaces>0 but create=false)",
+			namespaces:         5,
+			createNamespaces:   false,
+			expectedNamespaces: 0, // Gets reset to 0
+			expectedCreate:     false,
+		},
+		{
+			name:               "namespaces=0 forces create=false",
+			namespaces:         0,
+			createNamespaces:   true, // Will be forced to false
+			expectedNamespaces: 0,
+			expectedCreate:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &Config{
+				VaultAddr:        "http://127.0.0.1:8200",
+				VaultToken:       "root",
+				Mode:             "pki",
+				Workers:          4,
+				Namespaces:       tt.namespaces,
+				CreateNamespaces: tt.createNamespaces,
+				PKILeases:        100,
+				PKIKeySize:       2048,
+			}
+
+			err := cfg.Validate()
+			if err != nil {
+				t.Errorf("Validate() unexpected error = %v", err)
+				return
+			}
+
+			if cfg.Namespaces != tt.expectedNamespaces {
+				t.Errorf("expected Namespaces=%d, got %d", tt.expectedNamespaces, cfg.Namespaces)
+			}
+
+			if cfg.CreateNamespaces != tt.expectedCreate {
+				t.Errorf("expected CreateNamespaces=%v, got %v", tt.expectedCreate, cfg.CreateNamespaces)
+			}
+		})
+	}
+}
+
 func TestConfig_ParseDuration(t *testing.T) {
 	tests := []struct {
 		name     string
