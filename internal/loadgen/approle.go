@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/vault/api"
@@ -17,11 +16,10 @@ import (
 
 // AppRoleWorker implements the Worker interface for AppRole authentication.
 type AppRoleWorker struct {
-	client      *api.Client
-	cfg         *config.Config
-	stats       *stats.Stats
-	limiter     *ratelimit.Limiter
-	roleCounter atomic.Int64 // for unique role naming
+	client  *api.Client
+	cfg     *config.Config
+	stats   *stats.Stats
+	limiter *ratelimit.Limiter
 }
 
 // NewAppRoleWorker creates a new AppRole worker.
@@ -36,10 +34,10 @@ func NewAppRoleWorker(wcfg *WorkerConfig) *AppRoleWorker {
 
 // Setup prepares the AppRole auth method and KV engine in the given namespace.
 func (w *AppRoleWorker) Setup(ctx context.Context, namespace string) error {
-	if err := setupAppRoleAuth(ctx, w.client, namespace, w.cfg); err != nil {
+	if err := setupAppRoleAuth(ctx, w.client, namespace, w.cfg, w.stats); err != nil {
 		return err
 	}
-	return setupAppRoleKVEngine(ctx, w.client, namespace)
+	return setupAppRoleKVEngine(ctx, w.client, namespace, w.stats)
 }
 
 // Execute performs a single AppRole login and authenticated read.
@@ -142,7 +140,7 @@ func GenerateAppRoleLoad(ctx context.Context, cfg *config.Config) (*stats.Stats,
 }
 
 // setupAppRoleAuth enables and configures AppRole auth method in the given namespace
-func setupAppRoleAuth(ctx context.Context, vaultClient *api.Client, namespace string, cfg *config.Config) error {
+func setupAppRoleAuth(ctx context.Context, vaultClient *api.Client, namespace string, cfg *config.Config, st *stats.Stats) error {
 	// Create a client for this namespace
 	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
@@ -160,9 +158,14 @@ func setupAppRoleAuth(ctx context.Context, vaultClient *api.Client, namespace st
 		// Check if already mounted
 		if strings.Contains(err.Error(), "path is already in use") {
 			slog.Debug("approle auth already enabled", "namespace", namespace, "path", authPath)
+			st.IncAuthMethodsSkipped()
+			// Continue to policy setup even if auth already exists
 		} else {
+			st.IncAuthMethodsFailed()
 			return fmt.Errorf("failed to enable approle auth: %w", err)
 		}
+	} else {
+		st.IncAuthMethodsEnabled()
 	}
 
 	// Create a policy for KV read access
@@ -184,7 +187,7 @@ path "loadtest-kv/data/dummy" {
 }
 
 // setupAppRoleKVEngine enables a KV v2 engine and creates a dummy secret for authenticated testing
-func setupAppRoleKVEngine(ctx context.Context, vaultClient *api.Client, namespace string) error {
+func setupAppRoleKVEngine(ctx context.Context, vaultClient *api.Client, namespace string, st *stats.Stats) error {
 	// Create a client for this namespace
 	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
@@ -205,9 +208,14 @@ func setupAppRoleKVEngine(ctx context.Context, vaultClient *api.Client, namespac
 		// Check if already mounted
 		if strings.Contains(err.Error(), "path is already in use") {
 			slog.Debug("kv engine already mounted", "namespace", namespace, "engine", enginePath)
+			st.IncKVEnginesSkipped()
+			// Don't fail - secret might already exist
 		} else {
+			st.IncKVEnginesFailed()
 			return fmt.Errorf("failed to mount kv engine: %w", err)
 		}
+	} else {
+		st.IncKVEnginesEnabled()
 	}
 
 	// Create dummy secret for authenticated read testing
@@ -228,7 +236,7 @@ func setupAppRoleKVEngine(ctx context.Context, vaultClient *api.Client, namespac
 }
 
 // createAppRoleRole creates an individual AppRole role with idempotent behavior
-func createAppRoleRole(ctx context.Context, vaultClient *api.Client, namespace string, roleName string, cfg *config.Config) error {
+func createAppRoleRole(ctx context.Context, vaultClient *api.Client, namespace string, roleName string, cfg *config.Config, st *stats.Stats) error {
 	// Create a client for this namespace
 	nsClient, err := GetNamespacedClient(vaultClient, namespace)
 	if err != nil {
@@ -253,11 +261,14 @@ func createAppRoleRole(ctx context.Context, vaultClient *api.Client, namespace s
 		// Check if role already exists
 		if strings.Contains(err.Error(), "role already exists") || strings.Contains(err.Error(), "already in use") {
 			slog.Debug("approle role already exists", "namespace", namespace, "role", roleName)
+			st.IncAppRoleRolesSkipped()
 			return nil
 		}
+		st.IncAppRoleRolesFailed()
 		return fmt.Errorf("failed to create approle role %q: %w", roleName, err)
 	}
 
+	st.IncAppRoleRolesCreated()
 	slog.Debug("approle role created", "namespace", namespace, "role", roleName)
 	return nil
 }
@@ -271,7 +282,7 @@ func generateAppRoleLogin(ctx context.Context, vaultClient *api.Client, namespac
 	}
 
 	// Create the AppRole role on-demand (idempotent)
-	if err := createAppRoleRole(ctx, vaultClient, namespace, roleName, cfg); err != nil {
+	if err := createAppRoleRole(ctx, vaultClient, namespace, roleName, cfg, st); err != nil {
 		return fmt.Errorf("failed to create approle role: %w", err)
 	}
 

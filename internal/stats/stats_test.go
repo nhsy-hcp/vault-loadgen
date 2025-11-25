@@ -71,6 +71,83 @@ func TestStats_AuthenticatedReadsIncrement(t *testing.T) {
 	}
 }
 
+func TestStats_AuthMethodsIncrement(t *testing.T) {
+	s := New()
+
+	s.IncAuthMethodsEnabled()
+	s.IncAuthMethodsEnabled()
+	s.IncAuthMethodsSkipped()
+	s.IncAuthMethodsFailed()
+
+	if s.AuthMethodsEnabled != 2 {
+		t.Errorf("AuthMethodsEnabled = %d, want 2", s.AuthMethodsEnabled)
+	}
+	if s.AuthMethodsSkipped != 1 {
+		t.Errorf("AuthMethodsSkipped = %d, want 1", s.AuthMethodsSkipped)
+	}
+	if s.AuthMethodsFailed != 1 {
+		t.Errorf("AuthMethodsFailed = %d, want 1", s.AuthMethodsFailed)
+	}
+}
+
+func TestStats_PKIEnginesIncrement(t *testing.T) {
+	s := New()
+
+	s.IncPKIEnginesEnabled()
+	s.IncPKIEnginesEnabled()
+	s.IncPKIEnginesSkipped()
+	s.IncPKIEnginesFailed()
+
+	if s.PKIEnginesEnabled != 2 {
+		t.Errorf("PKIEnginesEnabled = %d, want 2", s.PKIEnginesEnabled)
+	}
+	if s.PKIEnginesSkipped != 1 {
+		t.Errorf("PKIEnginesSkipped = %d, want 1", s.PKIEnginesSkipped)
+	}
+	if s.PKIEnginesFailed != 1 {
+		t.Errorf("PKIEnginesFailed = %d, want 1", s.PKIEnginesFailed)
+	}
+}
+
+func TestStats_KVEnginesIncrement(t *testing.T) {
+	s := New()
+
+	s.IncKVEnginesEnabled()
+	s.IncKVEnginesEnabled()
+	s.IncKVEnginesEnabled()
+	s.IncKVEnginesSkipped()
+	s.IncKVEnginesFailed()
+
+	if s.KVEnginesEnabled != 3 {
+		t.Errorf("KVEnginesEnabled = %d, want 3", s.KVEnginesEnabled)
+	}
+	if s.KVEnginesSkipped != 1 {
+		t.Errorf("KVEnginesSkipped = %d, want 1", s.KVEnginesSkipped)
+	}
+	if s.KVEnginesFailed != 1 {
+		t.Errorf("KVEnginesFailed = %d, want 1", s.KVEnginesFailed)
+	}
+}
+
+func TestStats_AppRoleRolesIncrement(t *testing.T) {
+	s := New()
+
+	s.IncAppRoleRolesCreated()
+	s.IncAppRoleRolesCreated()
+	s.IncAppRoleRolesSkipped()
+	s.IncAppRoleRolesFailed()
+
+	if s.AppRoleRolesCreated != 2 {
+		t.Errorf("AppRoleRolesCreated = %d, want 2", s.AppRoleRolesCreated)
+	}
+	if s.AppRoleRolesSkipped != 1 {
+		t.Errorf("AppRoleRolesSkipped = %d, want 1", s.AppRoleRolesSkipped)
+	}
+	if s.AppRoleRolesFailed != 1 {
+		t.Errorf("AppRoleRolesFailed = %d, want 1", s.AppRoleRolesFailed)
+	}
+}
+
 func TestStats_Duration(t *testing.T) {
 	s := New()
 
@@ -137,6 +214,39 @@ func TestStats_TotalOperations(t *testing.T) {
 				s.AuthenticatedReadsFailed = 20
 			},
 			want: 271,
+		},
+		{
+			name: "engines and auth methods",
+			setupFunc: func(s *Stats) {
+				s.AuthMethodsEnabled = 5
+				s.AuthMethodsSkipped = 2
+				s.AuthMethodsFailed = 1
+				s.PKIEnginesEnabled = 10
+				s.PKIEnginesSkipped = 3
+				s.PKIEnginesFailed = 1
+				s.KVEnginesEnabled = 20
+				s.KVEnginesSkipped = 5
+				s.KVEnginesFailed = 2
+				s.AppRoleRolesCreated = 100
+				s.AppRoleRolesSkipped = 50
+				s.AppRoleRolesFailed = 10
+			},
+			want: 209,
+		},
+		{
+			name: "all operations including engines",
+			setupFunc: func(s *Stats) {
+				s.NamespacesCreated = 5
+				s.NamespacesSkipped = 2
+				s.AuthMethodsEnabled = 5
+				s.PKIEnginesEnabled = 5
+				s.KVEnginesEnabled = 10
+				s.AppRoleRolesCreated = 50
+				s.LeasesCreated = 100
+				s.SecretsCreated = 50
+				s.AuthenticatedReadsSucceeded = 80
+			},
+			want: 307,
 		},
 	}
 
@@ -286,6 +396,29 @@ func TestStats_SuccessRate(t *testing.T) {
 			},
 			want: 0.0,
 		},
+		{
+			name: "skipped resources count as success",
+			setupFunc: func(s *Stats) {
+				s.NamespacesSkipped = 5
+				s.AuthMethodsSkipped = 3
+				s.PKIEnginesSkipped = 2
+				s.KVEnginesSkipped = 10
+				s.AppRoleRolesSkipped = 20
+			},
+			want: 100.0,
+		},
+		{
+			name: "mixed with skipped resources",
+			setupFunc: func(s *Stats) {
+				s.NamespacesCreated = 5
+				s.NamespacesSkipped = 3
+				s.NamespacesFailed = 2
+				s.PKIEnginesEnabled = 10
+				s.PKIEnginesSkipped = 5
+				s.PKIEnginesFailed = 1
+			},
+			want: 88.46, // 23 successful out of 26 total
+		},
 	}
 
 	for _, tt := range tests {
@@ -294,7 +427,12 @@ func TestStats_SuccessRate(t *testing.T) {
 			tt.setupFunc(s)
 
 			got := s.SuccessRate()
-			if got != tt.want {
+			// Allow small floating point differences
+			diff := got - tt.want
+			if diff < 0 {
+				diff = -diff
+			}
+			if diff > 0.01 {
 				t.Errorf("SuccessRate() = %.2f, want %.2f", got, tt.want)
 			}
 		})

@@ -448,9 +448,9 @@ func TestVaultSkipVerify_EnvironmentVariable(t *testing.T) {
 			oldEnv := os.Getenv("VAULT_SKIP_VERIFY")
 			defer func() {
 				if oldEnv != "" {
-					os.Setenv("VAULT_SKIP_VERIFY", oldEnv)
+					_ = os.Setenv("VAULT_SKIP_VERIFY", oldEnv)
 				} else {
-					os.Unsetenv("VAULT_SKIP_VERIFY")
+					_ = os.Unsetenv("VAULT_SKIP_VERIFY")
 				}
 			}()
 
@@ -460,9 +460,9 @@ func TestVaultSkipVerify_EnvironmentVariable(t *testing.T) {
 
 			// Set environment variable if specified
 			if tt.envValue != "" {
-				os.Setenv("VAULT_SKIP_VERIFY", tt.envValue)
+				_ = os.Setenv("VAULT_SKIP_VERIFY", tt.envValue)
 			} else {
-				os.Unsetenv("VAULT_SKIP_VERIFY")
+				_ = os.Unsetenv("VAULT_SKIP_VERIFY")
 			}
 
 			// Reset and reconfigure Viper to pick up the new environment variable

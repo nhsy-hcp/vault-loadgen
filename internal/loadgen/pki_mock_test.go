@@ -165,7 +165,8 @@ func TestSetupPKIEngine_MockedResponses(t *testing.T) {
 
 			// Test setupPKIEngine
 			ctx := context.Background()
-			err = setupPKIEngine(ctx, vaultClient, tt.namespace, tt.certTTL, tt.rootCATTL)
+			st := stats.New()
+			err = setupPKIEngine(ctx, vaultClient, tt.namespace, tt.certTTL, tt.rootCATTL, st)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("setupPKIEngine() error = %v, wantErr %v", err, tt.wantErr)

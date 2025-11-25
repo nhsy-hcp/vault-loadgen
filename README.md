@@ -1,6 +1,6 @@
 # vault-loadgen
 
-[![CI](https://github.com/nhsy/vault-loadgen/actions/workflows/ci.yml/badge.svg)](https://github.com/nhsy/vault-loadgen/actions/workflows/ci.yml)
+[![CI](https://github.com/nhsy-hcp/vault-loadgen/actions/workflows/ci.yml/badge.svg)](https://github.com/nhsy-hcp/vault-loadgen/actions/workflows/ci.yml)
 
 A load generation tool for HashiCorp Vault.
 
@@ -18,7 +18,11 @@ A load generation tool for HashiCorp Vault.
     -   **OSS**: Fully compatible with Vault Open Source for single-namespace (root) load testing.
 -   **Rate Limiting**: Control the load precisely with a configurable rate limiter (`--rate-limit`) to avoid overwhelming Vault.
 -   **Graceful Shutdown**: Handles interruptions (Ctrl+C) gracefully, ensuring a clean exit.
--   **Detailed Statistics**: Provides a summary of operations, including duration, success/failure counts, and operations per second.
+-   **Detailed Statistics**: Provides a comprehensive summary of operations, including:
+    -   Duration and operations per second
+    -   Created/skipped/failed counts for all resources (namespaces, engines, auth methods, roles)
+    -   Idempotent operation tracking - shows what was reused vs created
+    -   Success rate calculation treating skipped resources as successful
 -   **Flexible Configuration**: Configure via CLI flags, environment variables, or a YAML file.
 
 ## Installation
@@ -440,6 +444,66 @@ Run linters:
 task lint
 ```
 
+## Statistics and Observability
+
+The tool provides detailed statistics for all operations, making it easy to understand what happened during load generation:
+
+### Resource Tracking
+
+All setup operations track three states for each resource type:
+-   **Created**: New resources successfully created
+-   **Skipped**: Resources that already existed (idempotent operations)
+-   **Failed**: Resources that encountered errors
+
+Tracked resources include:
+-   Namespaces
+-   Auth Methods (AppRole)
+-   PKI Engines
+-   KV Engines
+-   AppRole Roles
+-   Certificate Leases (PKI mode)
+-   Token Leases (AppRole mode)
+-   Secrets (KV mode)
+-   Authenticated Reads (AppRole mode)
+
+### Example Output
+
+```
+============================================================
+Load Generation Summary
+============================================================
+Mode: pki
+Duration: 5.2s
+
+Namespaces:
+  Created: 10
+  Skipped: 0
+  Failed:  0
+
+PKI Engines:
+  Enabled: 10
+  Skipped: 0
+  Failed:  0
+
+Leases:
+  Created: 1000
+  Failed:  0
+
+Performance:
+  Total Operations: 1020
+  Operations/sec:   196.15
+  Leases/sec:       192.31
+  Success Rate:     100.0%
+============================================================
+```
+
+### Idempotent Operations
+
+Running the tool multiple times against the same Vault instance will show skipped resources:
+- On first run: Resources are created
+- On subsequent runs: Existing resources are skipped, only new operations (leases/secrets) are performed
+- This allows safe re-runs without errors and helps identify what infrastructure is reused vs created
+
 ## Architecture
 
 The project follows the Golang Standards Project Layout:
@@ -451,7 +515,7 @@ The project follows the Golang Standards Project Layout:
     -   `internal/loadgen/` - Load generation logic (PKI, AppRole, KV, namespace management, validation)
     -   `internal/ratelimit/` - Rate limiting implementation
     -   `internal/shutdown/` - Graceful shutdown handling
-    -   `internal/stats/` - Statistics tracking and reporting
+    -   `internal/stats/` - Statistics tracking and reporting with atomic operations for thread-safety
 
 ## License
 

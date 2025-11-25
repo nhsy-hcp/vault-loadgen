@@ -114,7 +114,8 @@ func TestSetupAppRoleAuth_MockedResponses(t *testing.T) {
 
 			// Test setupAppRoleAuth
 			ctx := context.Background()
-			err = setupAppRoleAuth(ctx, vaultClient, tt.namespace, tt.cfg)
+			st := stats.New()
+			err = setupAppRoleAuth(ctx, vaultClient, tt.namespace, tt.cfg, st)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("setupAppRoleAuth() error = %v, wantErr %v", err, tt.wantErr)

@@ -13,6 +13,26 @@ type Stats struct {
 	NamespacesSkipped int64
 	NamespacesFailed  int64
 
+	// Auth method operations (AppRole)
+	AuthMethodsEnabled int64
+	AuthMethodsSkipped int64
+	AuthMethodsFailed  int64
+
+	// PKI engine operations
+	PKIEnginesEnabled int64
+	PKIEnginesSkipped int64
+	PKIEnginesFailed  int64
+
+	// KV engine operations
+	KVEnginesEnabled int64
+	KVEnginesSkipped int64
+	KVEnginesFailed  int64
+
+	// AppRole role operations
+	AppRoleRolesCreated int64
+	AppRoleRolesSkipped int64
+	AppRoleRolesFailed  int64
+
 	// Lease operations (PKI, AppRole)
 	LeasesCreated int64
 	LeasesFailed  int64
@@ -50,6 +70,66 @@ func (s *Stats) IncNamespacesSkipped() {
 // IncNamespacesFailed atomically increments the namespaces failed counter
 func (s *Stats) IncNamespacesFailed() {
 	atomic.AddInt64(&s.NamespacesFailed, 1)
+}
+
+// IncAuthMethodsEnabled atomically increments the auth methods enabled counter
+func (s *Stats) IncAuthMethodsEnabled() {
+	atomic.AddInt64(&s.AuthMethodsEnabled, 1)
+}
+
+// IncAuthMethodsSkipped atomically increments the auth methods skipped counter
+func (s *Stats) IncAuthMethodsSkipped() {
+	atomic.AddInt64(&s.AuthMethodsSkipped, 1)
+}
+
+// IncAuthMethodsFailed atomically increments the auth methods failed counter
+func (s *Stats) IncAuthMethodsFailed() {
+	atomic.AddInt64(&s.AuthMethodsFailed, 1)
+}
+
+// IncPKIEnginesEnabled atomically increments the PKI engines enabled counter
+func (s *Stats) IncPKIEnginesEnabled() {
+	atomic.AddInt64(&s.PKIEnginesEnabled, 1)
+}
+
+// IncPKIEnginesSkipped atomically increments the PKI engines skipped counter
+func (s *Stats) IncPKIEnginesSkipped() {
+	atomic.AddInt64(&s.PKIEnginesSkipped, 1)
+}
+
+// IncPKIEnginesFailed atomically increments the PKI engines failed counter
+func (s *Stats) IncPKIEnginesFailed() {
+	atomic.AddInt64(&s.PKIEnginesFailed, 1)
+}
+
+// IncKVEnginesEnabled atomically increments the KV engines enabled counter
+func (s *Stats) IncKVEnginesEnabled() {
+	atomic.AddInt64(&s.KVEnginesEnabled, 1)
+}
+
+// IncKVEnginesSkipped atomically increments the KV engines skipped counter
+func (s *Stats) IncKVEnginesSkipped() {
+	atomic.AddInt64(&s.KVEnginesSkipped, 1)
+}
+
+// IncKVEnginesFailed atomically increments the KV engines failed counter
+func (s *Stats) IncKVEnginesFailed() {
+	atomic.AddInt64(&s.KVEnginesFailed, 1)
+}
+
+// IncAppRoleRolesCreated atomically increments the AppRole roles created counter
+func (s *Stats) IncAppRoleRolesCreated() {
+	atomic.AddInt64(&s.AppRoleRolesCreated, 1)
+}
+
+// IncAppRoleRolesSkipped atomically increments the AppRole roles skipped counter
+func (s *Stats) IncAppRoleRolesSkipped() {
+	atomic.AddInt64(&s.AppRoleRolesSkipped, 1)
+}
+
+// IncAppRoleRolesFailed atomically increments the AppRole roles failed counter
+func (s *Stats) IncAppRoleRolesFailed() {
+	atomic.AddInt64(&s.AppRoleRolesFailed, 1)
 }
 
 // IncLeasesCreated atomically increments the leases created counter
@@ -98,6 +178,10 @@ func (s *Stats) Duration() time.Duration {
 // TotalOperations returns the total number of operations performed
 func (s *Stats) TotalOperations() int {
 	return int(s.NamespacesCreated + s.NamespacesSkipped + s.NamespacesFailed +
+		s.AuthMethodsEnabled + s.AuthMethodsSkipped + s.AuthMethodsFailed +
+		s.PKIEnginesEnabled + s.PKIEnginesSkipped + s.PKIEnginesFailed +
+		s.KVEnginesEnabled + s.KVEnginesSkipped + s.KVEnginesFailed +
+		s.AppRoleRolesCreated + s.AppRoleRolesSkipped + s.AppRoleRolesFailed +
 		s.LeasesCreated + s.LeasesFailed +
 		s.SecretsCreated + s.SecretsFailed +
 		s.AuthenticatedReadsSucceeded + s.AuthenticatedReadsFailed)
@@ -145,7 +229,12 @@ func (s *Stats) SuccessRate() float64 {
 	if total == 0 {
 		return 0
 	}
-	successful := s.NamespacesCreated + s.LeasesCreated + s.SecretsCreated + s.AuthenticatedReadsSucceeded
+	successful := s.NamespacesCreated + s.NamespacesSkipped +
+		s.AuthMethodsEnabled + s.AuthMethodsSkipped +
+		s.PKIEnginesEnabled + s.PKIEnginesSkipped +
+		s.KVEnginesEnabled + s.KVEnginesSkipped +
+		s.AppRoleRolesCreated + s.AppRoleRolesSkipped +
+		s.LeasesCreated + s.SecretsCreated + s.AuthenticatedReadsSucceeded
 	return float64(successful) / float64(total) * 100
 }
 
@@ -166,6 +255,42 @@ func (s *Stats) PrintSummary(mode string) {
 		fmt.Printf("  Created: %d\n", s.NamespacesCreated)
 		fmt.Printf("  Skipped: %d\n", s.NamespacesSkipped)
 		fmt.Printf("  Failed:  %d\n", s.NamespacesFailed)
+		fmt.Println()
+	}
+
+	// Auth method stats (for AppRole mode)
+	if s.AuthMethodsEnabled > 0 || s.AuthMethodsSkipped > 0 || s.AuthMethodsFailed > 0 {
+		fmt.Println("Auth Methods:")
+		fmt.Printf("  Enabled: %d\n", s.AuthMethodsEnabled)
+		fmt.Printf("  Skipped: %d\n", s.AuthMethodsSkipped)
+		fmt.Printf("  Failed:  %d\n", s.AuthMethodsFailed)
+		fmt.Println()
+	}
+
+	// PKI engine stats (for PKI mode)
+	if s.PKIEnginesEnabled > 0 || s.PKIEnginesSkipped > 0 || s.PKIEnginesFailed > 0 {
+		fmt.Println("PKI Engines:")
+		fmt.Printf("  Enabled: %d\n", s.PKIEnginesEnabled)
+		fmt.Printf("  Skipped: %d\n", s.PKIEnginesSkipped)
+		fmt.Printf("  Failed:  %d\n", s.PKIEnginesFailed)
+		fmt.Println()
+	}
+
+	// KV engine stats (for KV and AppRole modes)
+	if s.KVEnginesEnabled > 0 || s.KVEnginesSkipped > 0 || s.KVEnginesFailed > 0 {
+		fmt.Println("KV Engines:")
+		fmt.Printf("  Enabled: %d\n", s.KVEnginesEnabled)
+		fmt.Printf("  Skipped: %d\n", s.KVEnginesSkipped)
+		fmt.Printf("  Failed:  %d\n", s.KVEnginesFailed)
+		fmt.Println()
+	}
+
+	// AppRole role stats (for AppRole mode)
+	if s.AppRoleRolesCreated > 0 || s.AppRoleRolesSkipped > 0 || s.AppRoleRolesFailed > 0 {
+		fmt.Println("AppRole Roles:")
+		fmt.Printf("  Created: %d\n", s.AppRoleRolesCreated)
+		fmt.Printf("  Skipped: %d\n", s.AppRoleRolesSkipped)
+		fmt.Printf("  Failed:  %d\n", s.AppRoleRolesFailed)
 		fmt.Println()
 	}
 

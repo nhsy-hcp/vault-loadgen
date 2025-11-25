@@ -100,7 +100,8 @@ func TestSetupKVEngine_MockedResponses(t *testing.T) {
 
 			// Test setupKVEngine
 			ctx := context.Background()
-			err = setupKVEngine(ctx, vaultClient, tt.namespace, tt.engineName)
+			st := stats.New()
+			err = setupKVEngine(ctx, vaultClient, tt.namespace, tt.engineName, st)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("setupKVEngine() error = %v, wantErr %v", err, tt.wantErr)
